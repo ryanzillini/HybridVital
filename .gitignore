@@ -1,0 +1,15 @@
+# Xcode
+*.xcuserdatad/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.swiftpm
+
+# OS
+.DS_Store
+*.swp
+
+# Cursor / IDE
+.cursorrules
+.cursor/
