@@ -14,7 +14,7 @@ struct HybridVitalApp: App {
     
     init() {
         do {
-            container = try ModelContainer(for: UserProfile.self, DailyLog.self)
+            container = try ModelContainer(for: UserProfile.self, DailyLog.self, FoodEntry.self)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
