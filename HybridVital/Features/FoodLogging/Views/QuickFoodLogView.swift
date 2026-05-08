@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @Observable
 class QuickFoodLogViewModel {
@@ -149,7 +150,9 @@ struct QuickFoodLogView: View {
                     Button("Save") {
                         Task {
                             await viewModel.save()
-                            dismiss()
+                            if viewModel.errorMessage == nil {
+                                dismiss()
+                            }
                         }
                     }
                     .disabled(viewModel.isLoading || viewModel.foodName.trimmingCharacters(in: .whitespaces).isEmpty)

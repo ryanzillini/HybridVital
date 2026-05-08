@@ -39,7 +39,7 @@ enum LogSource: String, Codable {
     case grokVision, manual, usda, openFoodFacts, voice
 }
 
-struct MacroTargets: Codable, Equatable {
+struct MacroTargets: Codable, Equatable, Sendable {
     var proteinG: Int
     var carbsG: Int
     var fatG: Int
@@ -50,12 +50,12 @@ struct FoodPreference: Codable, Equatable {
     var isLiked: Bool
 }
 
-struct NotificationSettings: Codable, Equatable {
+struct NotificationSettings: Codable, Equatable, Sendable {
     var enabled: Bool = true
     static var `default`: NotificationSettings { NotificationSettings() }
 }
 
-struct NutritionInfo: Codable, Equatable, Hashable {
+struct NutritionInfo: Codable, Equatable, Hashable, Sendable {
     var calories: Double = 0
     var proteinG: Double = 0
     var carbsG: Double = 0

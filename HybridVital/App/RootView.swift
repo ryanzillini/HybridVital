@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct RootView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var repository: FoodLoggingRepository?
     
     var body: some View {
@@ -35,11 +36,8 @@ struct RootView: View {
         }
         .tint(.blue)
         .task {
-            do {
-                try await SwiftDataContainer.shared.initialize()
-                repository = FoodLoggingRepository()
-            } catch {
-                print("[RootView] Failed to initialize SwiftData: \(error)")
+            if repository == nil {
+                repository = FoodLoggingRepository(context: modelContext)
             }
         }
     }
@@ -58,7 +56,7 @@ struct DashboardView: View {
                 Color(.systemBackground)
                     .ignoresSafeArea()
                 
-                if let repo = repository {
+                if repository != nil {
                     ScrollView {
                         VStack(spacing: 20) {
                             VStack(alignment: .leading, spacing: 8) {
@@ -155,7 +153,9 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showingAddFood) {
-                QuickFoodLogView(repository: repo)
+                if let repository {
+                    QuickFoodLogView(repository: repository)
+                }
             }
             .task {
                 await loadTodayData()
@@ -170,8 +170,8 @@ struct DashboardView: View {
     private func loadTodayData() async {
         guard let repo = repository else { return }
         
-        todayEntries = await repo.getTodayEntries()
-        todayTotals = await repo.getTodayNutritionTotals()
+        todayEntries = repo.getTodayEntries()
+        todayTotals = repo.getTodayNutritionTotals()
     }
 }
 

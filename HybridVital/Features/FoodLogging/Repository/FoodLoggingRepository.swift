@@ -1,19 +1,20 @@
+// Features/FoodLogging/Repository/FoodLoggingRepository.swift
 import SwiftData
 import Foundation
+import Observation
 
 @Observable
-actor FoodLoggingRepository {
+final class FoodLoggingRepository {
+    
     private let context: ModelContext
     
-    init(context: ModelContext? = nil) {
-        if let context {
-            self.context = context
-        } else {
-            self.context = SwiftDataContainer.shared.mainContext
-        }
+    init(context: ModelContext) {
+        self.context = context
     }
     
-    func fetchTodayLog() async -> DailyLog? {
+    // MARK: - Today Log
+    
+    func fetchTodayLog() -> DailyLog? {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
@@ -36,8 +37,8 @@ actor FoodLoggingRepository {
         }
     }
     
-    func getOrCreateTodayLog() async -> DailyLog {
-        if let existing = await fetchTodayLog() {
+    func getOrCreateTodayLog() -> DailyLog {
+        if let existing = fetchTodayLog() {
             return existing
         }
         
@@ -46,6 +47,7 @@ actor FoodLoggingRepository {
         
         do {
             try context.save()
+            print("[FoodLogging] Created new DailyLog for today")
         } catch {
             print("[FoodLogging] Error creating today's log: \(error)")
         }
@@ -53,8 +55,10 @@ actor FoodLoggingRepository {
         return newLog
     }
     
-    func save(entry: FoodEntry) async {
-        let today = await getOrCreateTodayLog()
+    // MARK: - CRUD
+    
+    func save(entry: FoodEntry) {
+        let today = getOrCreateTodayLog()
         entry.dailyLog = today
         today.foodEntries.append(entry)
         
@@ -68,7 +72,7 @@ actor FoodLoggingRepository {
         }
     }
     
-    func delete(entry: FoodEntry) async {
+    func delete(entry: FoodEntry) {
         context.delete(entry)
         
         do {
@@ -79,15 +83,15 @@ actor FoodLoggingRepository {
         }
     }
     
-    func getTodayEntries() async -> [FoodEntry] {
-        if let log = await fetchTodayLog() {
+    func getTodayEntries() -> [FoodEntry] {
+        if let log = fetchTodayLog() {
             return log.foodEntries.sorted { $0.timestamp > $1.timestamp }
         }
         return []
     }
     
-    func getTodayNutritionTotals() async -> NutritionInfo {
-        let entries = await getTodayEntries()
+    func getTodayNutritionTotals() -> NutritionInfo {
+        let entries = getTodayEntries()
         var totals = NutritionInfo()
         
         for entry in entries {

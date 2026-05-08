@@ -13,3 +13,8 @@ DerivedData/
 # Cursor / IDE
 .cursorrules
 .cursor/
+
+# Documentation that shouldn't go into the app bundle
+**/README.md
+**/OVERVIEW.md
+**/*.mdc

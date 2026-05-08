@@ -7,7 +7,7 @@ actor SwiftDataContainer {
     private var container: ModelContainer?
     private let lock = NSLock()
     
-    nonisolated private init() {}
+    private init() {}
     
     func initialize() throws {
         lock.lock()
