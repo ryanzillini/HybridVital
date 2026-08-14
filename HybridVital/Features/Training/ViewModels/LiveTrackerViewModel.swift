@@ -11,24 +11,26 @@ struct InMemoryInterval: Identifiable, Sendable {
     var endedAt: Date?
     var startHR: Double?
     var endHR: Double?
-    var samples: [Double] = []
     var timeToReenterZone2Seconds: Double?
+    var sampleCount: Int = 0
+    var sampleSum: Double = 0
+    var maxHR: Double?
+    var minHR: Double?
 
     var durationSeconds: Double {
         (endedAt ?? .now).timeIntervalSince(startedAt)
     }
 
     var avgHR: Double? {
-        guard !samples.isEmpty else { return startHR }
-        return samples.reduce(0, +) / Double(samples.count)
+        guard sampleCount > 0 else { return startHR }
+        return sampleSum / Double(sampleCount)
     }
 
-    var maxHR: Double? {
-        samples.max() ?? startHR
-    }
-
-    var minHR: Double? {
-        samples.min() ?? startHR
+    mutating func record(bpm: Double) {
+        sampleCount += 1
+        sampleSum += bpm
+        maxHR = max(maxHR ?? bpm, bpm)
+        minHR = min(minHR ?? bpm, bpm)
     }
 }
 
@@ -40,8 +42,8 @@ enum LiveTrackerBridge {
 @Observable
 @MainActor
 final class LiveTrackerViewModel {
-    let sessionManager = WorkoutSessionManager()
-    let heartRateMonitor = HeartRateBLEService()
+    @ObservationIgnored private let sessionManager = WorkoutSessionManager()
+    @ObservationIgnored private let heartRateMonitor = HeartRateBLEService()
     let haptic = HapticCoach()
 
     var zoneSettings: HeartRateZoneSettings
@@ -51,12 +53,21 @@ final class LiveTrackerViewModel {
     var showingHelp = false
     var savedSession: TrainingSession?
     var isSaving = false
+    var displayHeartRate: Double?
+    var sensorStatus: HeartRateMonitorStatus = .idle
+    var sensorDevices: [DiscoveredHeartRateMonitor] = []
+    var sensorError: String?
+    var phase: WorkoutPhase = .idle
+    var elapsed: TimeInterval = 0
+    var activeCalories: Double = 0
+    private var sessionError: String?
 
     private var calculator: ZoneCalculator
-    private var liveActivity = Zone2LiveActivityController()
-    private var loopTask: Task<Void, Never>?
-    private var lastDownsample: Date?
-    private var hrSeries: [HRSamplePoint] = []
+    @ObservationIgnored private var liveActivity = Zone2LiveActivityController()
+    @ObservationIgnored private var loopTask: Task<Void, Never>?
+    @ObservationIgnored private var lastDownsample: Date?
+    @ObservationIgnored private var hrSeries: [HRSamplePoint] = []
+    @ObservationIgnored private var lastHapticAt: Date?
     private let repository: TrainingRepository
 
     init(repository: TrainingRepository) {
@@ -66,12 +77,9 @@ final class LiveTrackerViewModel {
         self.calculator = ZoneCalculator(settings: settings)
     }
 
-    var phase: WorkoutPhase { sessionManager.phase }
-    var currentHeartRate: Double? { heartRateMonitor.currentBPM ?? sessionManager.currentHeartRate }
-    var elapsed: TimeInterval { sessionManager.elapsed }
-    var hasReceivedHeartRate: Bool { heartRateMonitor.currentBPM != nil || sessionManager.hasReceivedHeartRate }
-    var errorMessage: String? { sessionManager.errorMessage ?? heartRateMonitor.lastError }
-    var activeCalories: Double { sessionManager.activeCalories }
+    var currentHeartRate: Double? { displayHeartRate }
+    var hasReceivedHeartRate: Bool { displayHeartRate != nil }
+    var errorMessage: String? { sessionError ?? sensorError }
     var distanceMeters: Double { sessionManager.distanceMeters }
 
     var currentZone: HeartRateZone? {
@@ -109,6 +117,7 @@ final class LiveTrackerViewModel {
             }
         }
         reloadZones()
+        startClock()
         Task {
             try? await HealthKitService.shared.requestAuthorization()
             sessionManager.requestLocation()
@@ -118,6 +127,8 @@ final class LiveTrackerViewModel {
 
     func onDisappear() {
         if !isSessionLive {
+            loopTask?.cancel()
+            loopTask = nil
             heartRateMonitor.stop()
             LiveTrackerBridge.viewModel = nil
         }
@@ -136,8 +147,10 @@ final class LiveTrackerViewModel {
         lastDownsample = nil
         savedSession = nil
         calculator = ZoneCalculator(settings: zoneSettings)
+        phase = .preparing
 
         await sessionManager.start()
+        publishWorkoutMetrics()
         guard phase == .active else {
             UIApplication.shared.isIdleTimerDisabled = false
             return
@@ -145,10 +158,13 @@ final class LiveTrackerViewModel {
 
         let startDate = sessionManager.startedAt ?? .now
         intervals = [
-            InMemoryInterval(kind: .jog, startedAt: startDate, startHR: sessionManager.currentHeartRate)
+            InMemoryInterval(kind: .jog, startedAt: startDate, startHR: currentHeartRate)
         ]
         startLiveActivity(at: startDate)
-        startLoop()
+    }
+
+    func connectToMonitor(id: UUID) {
+        heartRateMonitor.connect(id: id)
     }
 
     func pauseOrResume() {
@@ -157,6 +173,7 @@ final class LiveTrackerViewModel {
         } else if phase == .active {
             sessionManager.pause()
         }
+        publishWorkoutMetrics()
         pushLiveActivity()
     }
 
@@ -164,7 +181,7 @@ final class LiveTrackerViewModel {
         guard phase == .active || phase == .paused else { return }
         closeOpenInterval(at: date)
         currentKind = currentKind.toggled
-        let bpm = sessionManager.currentHeartRate
+        let bpm = currentHeartRate
         intervals.append(InMemoryInterval(kind: currentKind, startedAt: date, startHR: bpm))
         haptic.lapConfirmed()
         pushLiveActivity()
@@ -227,8 +244,8 @@ final class LiveTrackerViewModel {
         LiveTrackerBridge.viewModel = nil
     }
 
-    private func startLoop() {
-        loopTask?.cancel()
+    private func startClock() {
+        guard loopTask == nil else { return }
         loopTask = Task { @MainActor [weak self] in
             while let self, !Task.isCancelled {
                 self.tick()
@@ -238,10 +255,14 @@ final class LiveTrackerViewModel {
     }
 
     private func tick() {
-        sessionManager.refreshElapsed()
+        pullSensorSnapshot()
+        publishWorkoutMetrics()
+
+        let inWorkout = phase == .active || phase == .paused
+        guard inWorkout else { return }
         drainExternalLaps()
 
-        if let bpm = currentHeartRate {
+        if let bpm = displayHeartRate {
             sessionManager.recordHeartRate(bpm)
             let event = calculator.ingest(bpm: bpm)
             handle(event)
@@ -255,43 +276,90 @@ final class LiveTrackerViewModel {
         pushLiveActivity()
     }
 
+    private func pullSensorSnapshot() {
+        let snap = heartRateMonitor.snapshot()
+        let newBPM = snap.bpm.map { Int($0.rounded()) }
+        let oldBPM = displayHeartRate.map { Int($0.rounded()) }
+        if newBPM != oldBPM {
+            displayHeartRate = snap.bpm
+        }
+        if sensorStatus != snap.status {
+            sensorStatus = snap.status
+        }
+        if sensorDevices != snap.discovered {
+            sensorDevices = snap.discovered
+        }
+        if sensorError != snap.lastError {
+            sensorError = snap.lastError
+        }
+    }
+
+    private func publishWorkoutMetrics() {
+        sessionManager.refreshElapsed()
+        if phase != sessionManager.phase {
+            phase = sessionManager.phase
+        }
+        if Int(elapsed) != Int(sessionManager.elapsed) {
+            elapsed = sessionManager.elapsed
+        }
+        if Int(activeCalories) != Int(sessionManager.activeCalories) {
+            activeCalories = sessionManager.activeCalories
+        }
+        if sessionError != sessionManager.errorMessage {
+            sessionError = sessionManager.errorMessage
+        }
+    }
+
     private func handle(_ event: ZoneCalculator.CrossEvent) {
         switch event {
         case .enteredZone3:
+            guard shouldHaptic() else { return }
             haptic.enteredZone3()
             flashZ3 = true
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(900))
-                flashZ3 = false
+                self?.flashZ3 = false
             }
         case .returnedToZone2:
-            haptic.returnedToZone2()
             if var current = intervals.last, current.kind == .walk, current.timeToReenterZone2Seconds == nil {
                 current.timeToReenterZone2Seconds = current.durationSeconds
                 intervals[intervals.count - 1] = current
             }
+            guard shouldHaptic() else { return }
+            haptic.returnedToZone2()
         case .none:
             break
         }
     }
 
+    private func shouldHaptic() -> Bool {
+        let now = Date()
+        if let lastHapticAt, now.timeIntervalSince(lastHapticAt) < 3 {
+            return false
+        }
+        lastHapticAt = now
+        return true
+    }
+
     private func recordSample(bpm: Double) {
         let now = Date()
-        if var current = intervals.last {
-            current.samples.append(bpm)
-            intervals[intervals.count - 1] = current
+        if !intervals.isEmpty {
+            intervals[intervals.count - 1].record(bpm: bpm)
         }
 
         if lastDownsample == nil || now.timeIntervalSince(lastDownsample ?? .distantPast) >= 5 {
             hrSeries.append(HRSamplePoint(timestamp: now, bpm: bpm))
             lastDownsample = now
+            if hrSeries.count > 720 {
+                hrSeries.removeFirst(hrSeries.count - 720)
+            }
         }
     }
 
     private func closeOpenInterval(at date: Date) {
         guard var current = intervals.last, current.endedAt == nil else { return }
         current.endedAt = date
-        current.endHR = sessionManager.currentHeartRate
+        current.endHR = currentHeartRate
         intervals[intervals.count - 1] = current
     }
 
@@ -304,7 +372,7 @@ final class LiveTrackerViewModel {
     }
 
     private func contentState() -> Zone2ActivityAttributes.ContentState {
-        let bpm = Int((sessionManager.currentHeartRate ?? 0).rounded())
+        let bpm = Int((currentHeartRate ?? 0).rounded())
         let zone = calculator.currentZone
         return Zone2ActivityAttributes.ContentState(
             heartRate: bpm,

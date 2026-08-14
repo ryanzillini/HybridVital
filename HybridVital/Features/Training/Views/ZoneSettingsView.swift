@@ -28,7 +28,7 @@ struct ZoneSettingsView: View {
                         settings = settings.rebuilt(maxHR: settings.maxHR)
                     }
                 } footer: {
-                    Text("Zone 3 starts at \(settings.zone3Floor) bpm. Crossing that ceiling is your walk cue.")
+                    Text("The min/max you save are what the run uses. Recalculate replaces those with % of max HR. Zone 3 min (\(settings.zone3Floor) bpm) is the walk cue.")
                 }
 
                 Section("Zones") {

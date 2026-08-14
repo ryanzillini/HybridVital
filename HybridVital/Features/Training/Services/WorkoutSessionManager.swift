@@ -30,12 +30,14 @@ final class WorkoutSessionManager: NSObject {
     var errorMessage: String?
     var hasReceivedHeartRate = false
 
-    private var session: HKWorkoutSession?
-    private var builder: HKLiveWorkoutBuilder?
-    private let healthStore = HKHealthStore()
-    private let locationAuthorizer = LocationAuthorizer()
-    private var pauseStartedAt: Date?
-    private var pausedAccumulated: TimeInterval = 0
+    @ObservationIgnored private var session: HKWorkoutSession?
+    @ObservationIgnored private var builder: HKLiveWorkoutBuilder?
+    @ObservationIgnored private let healthStore = HKHealthStore()
+    @ObservationIgnored private let locationAuthorizer = LocationAuthorizer()
+    @ObservationIgnored private var pauseStartedAt: Date?
+    @ObservationIgnored private var pausedAccumulated: TimeInterval = 0
+    @ObservationIgnored private var lastSavedHRAt: Date?
+    @ObservationIgnored private var lastSavedHR: Int?
 
     var isRunning: Bool {
         phase == .active || phase == .paused || isPreparing
@@ -51,16 +53,26 @@ final class WorkoutSessionManager: NSObject {
     }
 
     func recordHeartRate(_ bpm: Double) {
-        currentHeartRate = bpm
+        let rounded = Int(bpm.rounded())
+        if currentHeartRate.map({ Int($0.rounded()) }) != rounded {
+            currentHeartRate = bpm
+        }
         hasReceivedHeartRate = true
         guard let builder, phase == .active || phase == .paused else { return }
+
+        let now = Date()
+        if let lastSavedHRAt, now.timeIntervalSince(lastSavedHRAt) < 5 {
+            return
+        }
+        lastSavedHRAt = now
+        lastSavedHR = rounded
 
         let quantity = HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: bpm)
         let sample = HKQuantitySample(
             type: HKQuantityType(.heartRate),
             quantity: quantity,
-            start: .now,
-            end: .now
+            start: now,
+            end: now
         )
         builder.add([sample]) { _, error in
             if let error {
@@ -141,9 +153,12 @@ final class WorkoutSessionManager: NSObject {
         if phase == .paused, let pauseStartedAt {
             extra += Date().timeIntervalSince(pauseStartedAt)
         }
-        elapsed = Date().timeIntervalSince(startedAt) - extra
+        var next = Date().timeIntervalSince(startedAt) - extra
         if let builderElapsed = builder?.elapsedTime {
-            elapsed = max(elapsed, builderElapsed)
+            next = max(next, builderElapsed)
+        }
+        if Int(next) != Int(elapsed) {
+            elapsed = next
         }
     }
 

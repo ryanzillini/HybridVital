@@ -95,8 +95,9 @@ nonisolated struct HeartRateZoneSettings: Equatable, Sendable {
 
     static func zones(for maxHR: Int) -> [HeartRateZone] {
         let clamped = max(120, maxHR)
+        // Zone 1 is everything below Zone 2, including warmup / walking HR.
         let percents: [(Int, String, Double, Double)] = [
-            (1, "Zone 1", 0.50, 0.60),
+            (1, "Zone 1", 0.00, 0.60),
             (2, "Zone 2", 0.60, 0.70),
             (3, "Zone 3", 0.70, 0.80),
             (4, "Zone 4", 0.80, 0.90),
@@ -119,12 +120,28 @@ nonisolated struct HeartRateZoneSettings: Equatable, Sendable {
     func zone(for bpm: Double) -> HeartRateZone? {
         guard !zones.isEmpty else { return nil }
         let hr = Int(bpm.rounded())
-        if let zone5 = zones.first(where: { $0.number == 5 }), hr >= zone5.minBPM {
-            return zone5
+        let sorted = zones.sorted { $0.number < $1.number }
+
+        if let match = sorted.last(where: { hr >= $0.minBPM && hr <= $0.maxBPM }) {
+            return match
         }
-        return zones.first { zone in
-            hr >= zone.minBPM && hr < zone.maxBPM
-        } ?? zones.last
+
+        if let last = sorted.last, hr > last.maxBPM {
+            return last
+        }
+        if let first = sorted.first, hr < first.minBPM {
+            return first
+        }
+
+        return sorted.min { a, b in
+            distance(hr, to: a) < distance(hr, to: b)
+        }
+    }
+
+    private func distance(_ hr: Int, to zone: HeartRateZone) -> Int {
+        if hr < zone.minBPM { return zone.minBPM - hr }
+        if hr > zone.maxBPM { return hr - zone.maxBPM }
+        return 0
     }
 
     var zone3Floor: Int {

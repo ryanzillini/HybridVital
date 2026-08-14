@@ -1,13 +1,13 @@
 import CoreBluetooth
 import Foundation
 
-struct DiscoveredHeartRateMonitor: Identifiable, Hashable {
+nonisolated struct DiscoveredHeartRateMonitor: Identifiable, Hashable, Sendable {
     let id: UUID
     let name: String
     let rssi: Int
 }
 
-enum HeartRateMonitorStatus: Equatable {
+nonisolated enum HeartRateMonitorStatus: Equatable, Sendable {
     case idle
     case unauthorized
     case poweredOff
@@ -15,32 +15,9 @@ enum HeartRateMonitorStatus: Equatable {
     case connecting(String)
     case connected(String)
     case unavailable
-}
 
-@Observable
-@MainActor
-final class HeartRateBLEService: NSObject {
-    var status: HeartRateMonitorStatus = .idle
-    var currentBPM: Double?
-    var discovered: [DiscoveredHeartRateMonitor] = []
-    var lastError: String?
-
-    private var central: CBCentralManager?
-    private var connectedPeripheral: CBPeripheral?
-    private var peripherals: [UUID: CBPeripheral] = [:]
-    private var lastNotifyAt: Date?
-
-    private let heartRateService = CBUUID(string: "180D")
-    private let heartRateMeasurement = CBUUID(string: "2A37")
-    private let lastDeviceKey = "lastHeartRateMonitorUUID"
-
-    var isConnected: Bool {
-        if case .connected = status { return true }
-        return false
-    }
-
-    var statusText: String {
-        switch status {
+    var text: String {
+        switch self {
         case .idle:
             "Bluetooth is starting…"
         case .unauthorized:
@@ -58,55 +35,114 @@ final class HeartRateBLEService: NSObject {
         }
     }
 
+    var isConnected: Bool {
+        if case .connected = self { return true }
+        return false
+    }
+}
+
+nonisolated struct HeartRateSnapshot: Equatable, Sendable {
+    var bpm: Double?
+    var status: HeartRateMonitorStatus
+    var discovered: [DiscoveredHeartRateMonitor]
+    var lastError: String?
+}
+
+/// Owns the COROS/BLE connection. Callbacks stay on a private queue.
+/// The UI must not observe this type — pull `snapshot()` on the session clock.
+final class HeartRateBLEService: NSObject, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.hybridvital.ble.hr")
+    private let lock = NSRecursiveLock()
+
+    private var central: CBCentralManager?
+    private var connectedPeripheral: CBPeripheral?
+    private var peripherals: [UUID: CBPeripheral] = [:]
+    private var latestBPM: Double?
+    private var status: HeartRateMonitorStatus = .idle
+    private var discovered: [DiscoveredHeartRateMonitor] = []
+    private var lastError: String?
+
+    private let heartRateService = CBUUID(string: "180D")
+    private let lastDeviceKey = "lastHeartRateMonitorUUID"
+
+    func snapshot() -> HeartRateSnapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return HeartRateSnapshot(
+            bpm: latestBPM,
+            status: status,
+            discovered: discovered,
+            lastError: lastError
+        )
+    }
+
     func startScanning() {
-        lastError = nil
-        if central == nil {
-            central = CBCentralManager(
-                delegate: self,
-                queue: .main,
-                options: [CBCentralManagerOptionShowPowerAlertKey: true]
-            )
-        } else {
-            handle(centralState: central?.state ?? .unknown)
+        queue.async { [weak self] in
+            self?.startScanningOnQueue()
         }
     }
 
     func connect(id: UUID) {
-        guard let peripheral = peripherals[id] else { return }
-        connect(peripheral)
+        queue.async { [weak self] in
+            guard let self, let peripheral = self.peripherals[id] else { return }
+            self.connectOnQueue(peripheral)
+        }
     }
 
     func stop() {
-        central?.stopScan()
-        if let connectedPeripheral {
-            central?.cancelPeripheralConnection(connectedPeripheral)
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.central?.stopScan()
+            if let connectedPeripheral = self.connectedPeripheral {
+                self.central?.cancelPeripheralConnection(connectedPeripheral)
+            }
+            self.connectedPeripheral = nil
+            self.write {
+                $0.latestBPM = nil
+                if $0.status != .unauthorized && $0.status != .poweredOff && $0.status != .unavailable {
+                    $0.status = .idle
+                }
+            }
         }
-        connectedPeripheral = nil
-        currentBPM = nil
-        if status != .unauthorized && status != .poweredOff && status != .unavailable {
-            status = .idle
+    }
+
+    private func startScanningOnQueue() {
+        write { $0.lastError = nil }
+        if snapshot().status.isConnected { return }
+        if central == nil {
+            central = CBCentralManager(
+                delegate: self,
+                queue: queue,
+                options: [CBCentralManagerOptionShowPowerAlertKey: true]
+            )
+        } else if let central {
+            handle(centralState: central.state)
         }
     }
 
     private func handle(centralState: CBManagerState) {
         switch centralState {
         case .unauthorized:
-            status = .unauthorized
+            write { $0.status = .unauthorized }
         case .poweredOff:
-            status = .poweredOff
+            write { $0.status = .poweredOff }
         case .unsupported:
-            status = .unavailable
+            write { $0.status = .unavailable }
         case .poweredOn:
-            beginScan()
+            if !snapshot().status.isConnected {
+                beginScanOnQueue()
+            }
         default:
-            status = .idle
+            write { $0.status = .idle }
         }
     }
 
-    private func beginScan() {
-        status = .scanning
-        discovered = []
-        currentBPM = nil
+    private func beginScanOnQueue() {
+        write {
+            $0.status = .scanning
+            $0.discovered = []
+            $0.latestBPM = nil
+        }
         central?.scanForPeripherals(
             withServices: [heartRateService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -116,15 +152,15 @@ final class HeartRateBLEService: NSObject {
            let uuid = UUID(uuidString: raw),
            let known = central?.retrievePeripherals(withIdentifiers: [uuid]).first {
             peripherals[known.identifier] = known
-            connect(known)
+            connectOnQueue(known)
         }
     }
 
-    private func connect(_ peripheral: CBPeripheral) {
+    private func connectOnQueue(_ peripheral: CBPeripheral) {
         central?.stopScan()
         connectedPeripheral = peripheral
         peripheral.delegate = self
-        status = .connecting(displayName(for: peripheral))
+        write { $0.status = .connecting(self.displayName(for: peripheral)) }
         central?.connect(peripheral, options: nil)
     }
 
@@ -133,105 +169,92 @@ final class HeartRateBLEService: NSObject {
         return name.isEmpty ? "Heart rate band" : name
     }
 
-    fileprivate func didDiscover(peripheral: CBPeripheral, advertisementName: String?, rssi: Int) {
-        peripherals[peripheral.identifier] = peripheral
-        let name = {
-            let advertised = advertisementName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if !advertised.isEmpty { return advertised }
-            return displayName(for: peripheral)
-        }()
-
-        let monitor = DiscoveredHeartRateMonitor(id: peripheral.identifier, name: name, rssi: rssi)
-        if let index = discovered.firstIndex(where: { $0.id == monitor.id }) {
-            discovered[index] = monitor
-        } else {
-            discovered.append(monitor)
-            discovered.sort { $0.rssi > $1.rssi }
-        }
-
-        if connectedPeripheral == nil, discovered.count == 1 {
-            connect(peripheral)
-        }
-    }
-
-    fileprivate func applyHeartRate(_ bpm: Double) {
-        currentBPM = bpm
-        lastNotifyAt = .now
-        if let connectedPeripheral, case .connecting = status {
-            status = .connected(displayName(for: connectedPeripheral))
-        }
+    private func write(_ update: (HeartRateBLEService) -> Void) {
+        lock.lock()
+        update(self)
+        lock.unlock()
     }
 }
 
 extension HeartRateBLEService: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        let state = central.state
-        Task { @MainActor in
-            self.handle(centralState: state)
-        }
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        handle(centralState: central.state)
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        let advertised = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        let rssi = RSSI.intValue
-        Task { @MainActor in
-            self.didDiscover(peripheral: peripheral, advertisementName: advertised, rssi: rssi)
-        }
-    }
+        if snapshot().status.isConnected { return }
+        peripherals[peripheral.identifier] = peripheral
 
-    nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        peripheral.discoverServices([CBUUID(string: "180D")])
-        let name = peripheral.name
-        Task { @MainActor in
-            UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: self.lastDeviceKey)
-            self.status = .connected(name?.isEmpty == false ? name! : "Heart rate band")
-        }
-    }
+        let advertised = (advertisementData[CBAdvertisementDataLocalNameKey] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let name = advertised.isEmpty ? displayName(for: peripheral) : advertised
+        let monitor = DiscoveredHeartRateMonitor(id: peripheral.identifier, name: name, rssi: RSSI.intValue)
 
-    nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        let message = error?.localizedDescription ?? "Could not connect to the band."
-        Task { @MainActor in
-            self.lastError = message
-            self.connectedPeripheral = nil
-            self.beginScan()
-        }
-    }
-
-    nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        Task { @MainActor in
-            self.currentBPM = nil
-            if self.connectedPeripheral?.identifier == peripheral.identifier {
-                self.connectedPeripheral = nil
-                self.beginScan()
+        write { service in
+            if let index = service.discovered.firstIndex(where: { $0.id == monitor.id }) {
+                service.discovered[index] = monitor
+            } else {
+                service.discovered.append(monitor)
+                service.discovered.sort { $0.rssi > $1.rssi }
             }
+        }
+
+        if connectedPeripheral == nil, snapshot().discovered.count == 1 {
+            connectOnQueue(peripheral)
+        }
+    }
+
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        peripheral.discoverServices([CBUUID(string: "180D")])
+        UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: lastDeviceKey)
+        let name = displayName(for: peripheral)
+        write { $0.status = .connected(name) }
+    }
+
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        write {
+            $0.lastError = error?.localizedDescription ?? "Could not connect to the band."
+        }
+        connectedPeripheral = nil
+        beginScanOnQueue()
+    }
+
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        write { $0.latestBPM = nil }
+        if connectedPeripheral?.identifier == peripheral.identifier {
+            connectedPeripheral = nil
+            beginScanOnQueue()
         }
     }
 }
 
 extension HeartRateBLEService: CBPeripheralDelegate {
-    nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         peripheral.services?.filter { $0.uuid == CBUUID(string: "180D") }.forEach { service in
             peripheral.discoverCharacteristics([CBUUID(string: "2A37")], for: service)
         }
     }
 
-    nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         service.characteristics?.filter { $0.uuid == CBUUID(string: "2A37") }.forEach { characteristic in
             peripheral.setNotifyValue(true, for: characteristic)
         }
     }
 
-    nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard characteristic.uuid == CBUUID(string: "2A37"),
               let bpm = Self.parseHeartRate(characteristic.value) else { return }
-        Task { @MainActor in
-            self.applyHeartRate(bpm)
+        lock.lock()
+        latestBPM = bpm
+        if case .connecting(let name) = status {
+            status = .connected(name)
         }
+        lock.unlock()
     }
 
     nonisolated static func parseHeartRate(_ data: Data?) -> Double? {

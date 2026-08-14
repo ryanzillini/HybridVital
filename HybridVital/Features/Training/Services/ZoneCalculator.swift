@@ -20,6 +20,7 @@ struct ZoneCalculator {
     mutating func ingest(bpm: Double, at date: Date = .now) -> CrossEvent {
         let zone = settings.zone(for: bpm)
         currentZone = zone
+        let zoneNumber = zone?.number
 
         if let lastTimestamp, let lastZoneNumber {
             let delta = date.timeIntervalSince(lastTimestamp)
@@ -29,7 +30,7 @@ struct ZoneCalculator {
         }
 
         var event: CrossEvent = .none
-        if let lastZoneNumber, let zoneNumber = zone?.number {
+        if let lastZoneNumber, let zoneNumber {
             let wasAbove = lastZoneNumber >= 3
             let isAbove = zoneNumber >= 3
             if !wasAbove, isAbove {
@@ -40,7 +41,7 @@ struct ZoneCalculator {
         }
 
         lastTimestamp = date
-        lastZoneNumber = zone?.number
+        lastZoneNumber = zoneNumber
         return event
     }
 }

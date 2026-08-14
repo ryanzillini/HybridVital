@@ -154,13 +154,13 @@ struct LiveTrackerView: View {
                 Circle()
                     .fill(viewModel.hasReceivedHeartRate ? Color.green : Color.orange)
                     .frame(width: 10, height: 10)
-                Text(viewModel.heartRateMonitor.statusText)
+                Text(viewModel.sensorStatus.text)
                     .font(.subheadline)
                     .multilineTextAlignment(.leading)
                 Spacer()
             }
 
-            if let bpm = viewModel.heartRateMonitor.currentBPM {
+            if let bpm = viewModel.currentHeartRate {
                 Text("\(Int(bpm.rounded()))")
                     .font(.system(size: 64, weight: .bold, design: .rounded))
                     .foregroundStyle(.green)
@@ -172,14 +172,14 @@ struct LiveTrackerView: View {
                     .tint(.white)
             }
 
-            if viewModel.heartRateMonitor.discovered.count > 1 {
+            if viewModel.sensorDevices.count > 1 {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Heart rate devices")
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
-                    ForEach(viewModel.heartRateMonitor.discovered) { device in
+                    ForEach(viewModel.sensorDevices) { device in
                         Button {
-                            viewModel.heartRateMonitor.connect(id: device.id)
+                            viewModel.connectToMonitor(id: device.id)
                         } label: {
                             HStack {
                                 Text(device.name)
@@ -236,6 +236,12 @@ struct LiveTrackerView: View {
                 Text(viewModel.currentZone?.name ?? "Waiting for HR")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(zoneColor)
+
+                if let zone = viewModel.currentZone {
+                    Text("\(zone.minBPM)–\(zone.maxBPM) bpm")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 if !viewModel.hasReceivedHeartRate {
                     Text("Waiting for COROS band…")

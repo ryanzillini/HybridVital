@@ -214,7 +214,8 @@ enum ZonePalette {
         case 2: .green
         case 3: .yellow
         case 4: .orange
-        default: .red
+        case 5: .red
+        default: .secondary
         }
     }
 }
