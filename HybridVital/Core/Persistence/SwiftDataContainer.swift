@@ -18,7 +18,9 @@ actor SwiftDataContainer {
         let schema = Schema([
             UserProfile.self,
             DailyLog.self,
-            FoodEntry.self
+            FoodEntry.self,
+            TrainingSession.self,
+            WorkoutInterval.self
         ])
         
         let modelConfiguration = ModelConfiguration(

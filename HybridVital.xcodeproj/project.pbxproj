@@ -8,23 +8,89 @@
 
 /* Begin PBXBuildFile section */
 		06FBD0C22FAC3FF6002A756C /* .cursorrules in Resources */ = {isa = PBXBuildFile; fileRef = 06FBD0C12FAC3FEB002A756C /* .cursorrules */; };
+		06FBD0E222FAC2F45002A756C /* HybridVitalWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06FBD0E132FAC2F45002A756C /* HybridVitalWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		06FBD0E232FAC2F45002A756C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06FBD06E2FAC2F45002A756C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 06FBD0E172FAC2F45002A756C;
+			remoteInfo = HybridVitalWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		06FBD0E212FAC2F45002A756C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				06FBD0E222FAC2F45002A756C /* HybridVitalWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		06FBD0762FAC2F45002A756C /* HybridVital.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HybridVital.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06FBD0C12FAC3FEB002A756C /* .cursorrules */ = {isa = PBXFileReference; lastKnownFileType = text; path = .cursorrules; sourceTree = "<group>"; };
+		06FBD0E132FAC2F45002A756C /* HybridVitalWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HybridVitalWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		06FBD0E102FAC2F45002A756C /* Exceptions for "HybridVital" folder in "HybridVital" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 06FBD0752FAC2F45002A756C /* HybridVital */;
+		};
+		06FBD0E252FAC2F45002A756C /* Exceptions for "HybridVitalWidgets" folder in "HybridVitalWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 06FBD0E172FAC2F45002A756C /* HybridVitalWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		06FBD0782FAC2F45002A756C /* HybridVital */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				06FBD0E102FAC2F45002A756C /* Exceptions for "HybridVital" folder in "HybridVital" target */,
+			);
 			path = HybridVital;
+			sourceTree = "<group>";
+		};
+		06FBD0E112FAC2F45002A756C /* HybridVitalShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HybridVitalShared;
+			sourceTree = "<group>";
+		};
+		06FBD0E122FAC2F45002A756C /* HybridVitalWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				06FBD0E252FAC2F45002A756C /* Exceptions for "HybridVitalWidgets" folder in "HybridVitalWidgets" target */,
+			);
+			path = HybridVitalWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		06FBD0732FAC2F45002A756C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06FBD0E142FAC2F45002A756C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -39,6 +105,8 @@
 			children = (
 				06FBD0C12FAC3FEB002A756C /* .cursorrules */,
 				06FBD0782FAC2F45002A756C /* HybridVital */,
+				06FBD0E112FAC2F45002A756C /* HybridVitalShared */,
+				06FBD0E122FAC2F45002A756C /* HybridVitalWidgets */,
 				06FBD0772FAC2F45002A756C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,6 +115,7 @@
 			isa = PBXGroup;
 			children = (
 				06FBD0762FAC2F45002A756C /* HybridVital.app */,
+				06FBD0E132FAC2F45002A756C /* HybridVitalWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,13 +130,16 @@
 				06FBD0722FAC2F45002A756C /* Sources */,
 				06FBD0732FAC2F45002A756C /* Frameworks */,
 				06FBD0742FAC2F45002A756C /* Resources */,
+				06FBD0E212FAC2F45002A756C /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				06FBD0E242FAC2F45002A756C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				06FBD0782FAC2F45002A756C /* HybridVital */,
+				06FBD0E112FAC2F45002A756C /* HybridVitalShared */,
 			);
 			name = HybridVital;
 			packageProductDependencies = (
@@ -75,6 +147,29 @@
 			productName = HybridVital;
 			productReference = 06FBD0762FAC2F45002A756C /* HybridVital.app */;
 			productType = "com.apple.product-type.application";
+		};
+		06FBD0E172FAC2F45002A756C /* HybridVitalWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06FBD0E202FAC2F45002A756C /* Build configuration list for PBXNativeTarget "HybridVitalWidgets" */;
+			buildPhases = (
+				06FBD0E152FAC2F45002A756C /* Sources */,
+				06FBD0E142FAC2F45002A756C /* Frameworks */,
+				06FBD0E162FAC2F45002A756C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				06FBD0E112FAC2F45002A756C /* HybridVitalShared */,
+				06FBD0E122FAC2F45002A756C /* HybridVitalWidgets */,
+			);
+			name = HybridVitalWidgets;
+			packageProductDependencies = (
+			);
+			productName = HybridVitalWidgets;
+			productReference = 06FBD0E132FAC2F45002A756C /* HybridVitalWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -84,11 +179,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					06FBD0752FAC2F45002A756C = {
 						CreatedOnToolsVersion = 26.4.1;
 						LastSwiftMigration = 2640;
+					};
+					06FBD0E172FAC2F45002A756C = {
+						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
 			};
@@ -107,6 +205,7 @@
 			projectRoot = "";
 			targets = (
 				06FBD0752FAC2F45002A756C /* HybridVital */,
+				06FBD0E172FAC2F45002A756C /* HybridVitalWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -120,6 +219,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		06FBD0E162FAC2F45002A756C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -130,7 +236,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		06FBD0E152FAC2F45002A756C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		06FBD0E242FAC2F45002A756C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 06FBD0E172FAC2F45002A756C /* HybridVitalWidgets */;
+			targetProxy = 06FBD0E232FAC2F45002A756C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		06FBD0812FAC2F47002A756C /* Debug */ = {
@@ -192,6 +313,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -249,6 +371,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -260,11 +383,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = HybridVital/HybridVital.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9W97TPX855;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridVital/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "HybridVital connects to your COROS heart rate band over Bluetooth so Zone 2 sessions can show live BPM.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "HybridVital reads heart rate and workouts so you can train Zone 2 with your COROS band.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "HybridVital saves Zone 2 sessions and heart rate to Apple Health.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HybridVital uses location during outdoor Zone 2 runs to record distance.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -294,11 +424,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = HybridVital/HybridVital.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9W97TPX855;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridVital/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "HybridVital connects to your COROS heart rate band over Bluetooth so Zone 2 sessions can show live BPM.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "HybridVital reads heart rate and workouts so you can train Zone 2 with your COROS band.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "HybridVital saves Zone 2 sessions and heart rate to Apple Health.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HybridVital uses location during outdoor Zone 2 runs to record distance.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -311,6 +448,73 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hybridvital.HybridVital;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		06FBD0E182FAC2F45002A756C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = HybridVitalWidgets/HybridVitalWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9W97TPX855;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridVitalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HybridVital;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hybridvital.HybridVital.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		06FBD0E192FAC2F45002A756C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = HybridVitalWidgets/HybridVitalWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9W97TPX855;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridVitalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HybridVital;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hybridvital.HybridVital.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -338,6 +542,15 @@
 			buildConfigurations = (
 				06FBD0842FAC2F47002A756C /* Debug */,
 				06FBD0852FAC2F47002A756C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		06FBD0E202FAC2F45002A756C /* Build configuration list for PBXNativeTarget "HybridVitalWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06FBD0E182FAC2F45002A756C /* Debug */,
+				06FBD0E192FAC2F45002A756C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

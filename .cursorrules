@@ -1,6 +1,6 @@
 # HybridVital Project Rules
 
-- Native SwiftUI only, iOS 18+
+- Native SwiftUI only, iOS 26+
 - Modern MVVM with @Observable
 - Feature-based folders: App / Core / Features
 - Local-first with SwiftData + HealthKit
