@@ -21,10 +21,18 @@ struct LiveTrackerView: View {
                 background.ignoresSafeArea()
 
                 if let session = viewModel.savedSession {
-                    SessionSummaryView(session: session) {
-                        onFinished?()
-                        dismiss()
-                    }
+                    SessionSummaryView(
+                        session: session,
+                        onDelete: {
+                            repository.delete(session: session)
+                            onFinished?()
+                            dismiss()
+                        },
+                        onDone: {
+                            onFinished?()
+                            dismiss()
+                        }
+                    )
                 } else if viewModel.isSessionLive {
                     activeSession
                 } else {

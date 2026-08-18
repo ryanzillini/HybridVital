@@ -5,8 +5,20 @@ import SwiftUI
 struct SessionSummaryView: View {
     let session: TrainingSession
     var onDone: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmDelete = false
+    @State private var showingExportFormats = false
+    @State private var shareItems: [URL] = []
+    @State private var showingShare = false
+    @State private var exportError: String?
+
+    init(session: TrainingSession, onDelete: (() -> Void)? = nil, onDone: (() -> Void)? = nil) {
+        self.session = session
+        self.onDelete = onDelete
+        self.onDone = onDone
+    }
 
     var body: some View {
         NavigationStack {
@@ -34,20 +46,84 @@ struct SessionSummaryView: View {
             .navigationTitle("Zone 2 Session")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        if let onDone {
-                            onDone()
-                        } else {
-                            dismiss()
-                        }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: close) {
+                        Image(systemName: "chevron.down")
                     }
-                    .fontWeight(.semibold)
+                    .accessibilityLabel("Close")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button("Export", systemImage: "square.and.arrow.up") {
+                            showingExportFormats = true
+                        }
+                        if onDelete != nil {
+                            Divider()
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                confirmDelete = true
+                            }
+                        }
+                    } label: {
+                        Label("Session actions", systemImage: "ellipsis.circle")
+                    }
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
+            .confirmationDialog(
+                "Export this session",
+                isPresented: $showingExportFormats,
+                titleVisibility: .visible
+            ) {
+                Button("JSON") { export(.json) }
+                Button("CSV") { export(.csv) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("JSON is the full session. CSV is heart rate and laps for a spreadsheet.")
+            }
+            .sheet(isPresented: $showingShare) {
+                ShareSheet(items: shareItems) {
+                    showingShare = false
+                }
+            }
+            .alert("Delete this session?", isPresented: $confirmDelete) {
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    close()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes \(session.startedAt.formatted(date: .abbreviated, time: .shortened)) from HybridVital. The workout in Apple Health is left as-is.")
+            }
+            .alert(
+                "Couldn’t export",
+                isPresented: Binding(
+                    get: { exportError != nil },
+                    set: { if !$0 { exportError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { exportError = nil }
+            } message: {
+                Text(exportError ?? "")
+            }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func close() {
+        if let onDone {
+            onDone()
+        } else {
+            dismiss()
+        }
+    }
+
+    private func export(_ format: SessionExportFormat) {
+        do {
+            shareItems = try SessionExport.shareItems(for: session, format: format)
+            showingShare = true
+        } catch {
+            exportError = error.localizedDescription
+        }
     }
 
     private var header: some View {

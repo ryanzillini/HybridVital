@@ -8,11 +8,12 @@ struct TrainingHubView: View {
     @State private var showingZones = false
     @State private var sessions: [TrainingSession] = []
     @State private var selectedSession: TrainingSession?
+    @State private var sessionPendingDelete: TrainingSession?
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
+            List {
+                Section {
                     Button {
                         showingTracker = true
                     } label: {
@@ -28,11 +29,16 @@ struct TrainingHubView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 180)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                     .buttonStyle(.plain)
-                    .padding(.horizontal)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                    )
+                    .listRowSeparator(.hidden)
 
                     Button {
                         showingZones = true
@@ -41,40 +47,51 @@ struct TrainingHubView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .padding(.horizontal)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                     Text("Wear the COROS armband, start a session, and tap when you cross into Zone 3 or return to jogging.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
 
+                Section {
                     if sessions.isEmpty {
                         ContentUnavailableView(
                             "No sessions yet",
                             systemImage: "figure.run",
                             description: Text("Your jog/walk history will show up here.")
                         )
-                        .padding(.top, 24)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Recent sessions")
-                                .font(.headline)
-                                .padding(.horizontal)
-
-                            ForEach(sessions, id: \.id) { session in
-                                Button {
-                                    selectedSession = session
-                                } label: {
-                                    sessionRow(session)
+                        ForEach(sessions, id: \.id) { session in
+                            sessionRow(session)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedSession = session }
+                                .accessibilityAddTraits(.isButton)
+                                .listRowBackground(Color(.secondarySystemBackground))
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button("Delete", role: .destructive) {
+                                        sessionPendingDelete = session
+                                    }
                                 }
-                                .buttonStyle(.plain)
-                            }
+                                .contextMenu {
+                                    Button("Delete Session", role: .destructive) {
+                                        sessionPendingDelete = session
+                                    }
+                                }
                         }
                     }
+                } header: {
+                    if !sessions.isEmpty {
+                        Text("Recent sessions")
+                    }
                 }
-                .padding(.top, 12)
-                .padding(.bottom, 32)
             }
+            .listStyle(.plain)
             .navigationTitle("Training")
             .fullScreenCover(isPresented: $showingTracker, onDismiss: loadSessions) {
                 LiveTrackerView(repository: repository) {
@@ -90,8 +107,29 @@ struct TrainingHubView: View {
                 set: { if !$0 { selectedSession = nil } }
             )) {
                 if let selectedSession {
-                    SessionSummaryView(session: selectedSession)
+                    SessionSummaryView(
+                        session: selectedSession,
+                        onDelete: { delete(selectedSession) }
+                    )
                 }
+            }
+            .alert(
+                "Delete this session?",
+                isPresented: Binding(
+                    get: { sessionPendingDelete != nil },
+                    set: { if !$0 { sessionPendingDelete = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let sessionPendingDelete {
+                        delete(sessionPendingDelete)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    sessionPendingDelete = nil
+                }
+            } message: {
+                Text(deleteConfirmationMessage(for: sessionPendingDelete))
             }
             .task { loadSessions() }
         }
@@ -117,10 +155,21 @@ struct TrainingHubView: View {
                     .foregroundStyle(.green)
             }
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
+        .padding(.vertical, 6)
+    }
+
+    private func delete(_ session: TrainingSession) {
+        repository.delete(session: session)
+        if selectedSession?.id == session.id {
+            selectedSession = nil
+        }
+        sessionPendingDelete = nil
+        loadSessions()
+    }
+
+    private func deleteConfirmationMessage(for session: TrainingSession?) -> String {
+        let when = session?.startedAt.formatted(date: .abbreviated, time: .shortened) ?? "this session"
+        return "This removes \(when) from HybridVital. The workout in Apple Health is left as-is."
     }
 
     private func loadSessions() {
