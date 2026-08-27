@@ -8,6 +8,8 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>HybridVital connects to your COROS heart rate band over Bluetooth so Zone 2 sessions can show live BPM.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HybridVital reads a meal photo so you can review the parsed nutrition before saving.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>

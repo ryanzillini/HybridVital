@@ -14,7 +14,7 @@ DerivedData/
 .cursorrules
 .cursor/
 
-# Documentation that shouldn't go into the app bundle
-**/README.md
-**/OVERVIEW.md
-**/*.mdc
+# README files inside app targets (Xcode synchronized folders copy them into the bundle)
+HybridVital/**/README.md
+HybridVitalShared/**/README.md
+HybridVitalWidgets/**/README.md

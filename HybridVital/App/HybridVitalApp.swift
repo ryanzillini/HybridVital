@@ -30,6 +30,8 @@ struct HybridVitalApp: App {
         WindowGroup {
             RootView()
                 .modelContainer(container)
+                .preferredColorScheme(.dark)
+                .tint(.green)
         }
     }
 }

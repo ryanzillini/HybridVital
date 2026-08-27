@@ -1,5 +1,9 @@
 # AI Memory & Context System
 
+UI for these layers: [screens/coach-home.md](screens/coach-home.md), [screens/coach-memory.md](screens/coach-memory.md), [screens/coach-chat.md](screens/coach-chat.md).  
+API contract: [API.md](API.md#grok-coach).
+
+
 ## Philosophy
 
 Mostly automatic memory with user overrides. The “wow factor” comes from the AI just knowing Ryan without being reminded.
