@@ -21,6 +21,7 @@ enum ProgressTimeRange: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
 struct ProgressSnapshot {
     var macroDays: [DemoCatalog.MacroDay]
     var macrosAreSample: Bool
@@ -72,6 +73,7 @@ struct ProgressSnapshot {
         return Int((Double(total) / Double(active.count)).rounded())
     }
 
+    @MainActor
     static func load(services: AppServices, range: ProgressTimeRange) -> ProgressSnapshot {
         let profile = services.training.getOrCreateProfile()
         let macros = loadMacros(food: services.food, range: range)
@@ -108,6 +110,7 @@ struct ProgressSnapshot {
         )
     }
 
+    @MainActor
     private static func loadMacros(
         food: FoodLoggingRepository,
         range: ProgressTimeRange
@@ -121,12 +124,32 @@ struct ProgressSnapshot {
         var days: [DemoCatalog.MacroDay] = []
         days.reserveCapacity(logs.count)
         for log in logs {
-            days.append(macroDay(from: log))
+            var totals = NutritionInfo()
+            for entry in log.foodEntries {
+                totals.calories += entry.nutrition.calories
+                totals.proteinG += entry.nutrition.proteinG
+                totals.carbsG += entry.nutrition.carbsG
+                totals.fatG += entry.nutrition.fatG
+                totals.fiberG += entry.nutrition.fiberG
+            }
+            days.append(
+                DemoCatalog.MacroDay(
+                    date: log.date,
+                    calories: totals.calories,
+                    proteinG: totals.proteinG,
+                    carbsG: totals.carbsG,
+                    fatG: totals.fatG,
+                    fiberG: totals.fiberG,
+                    energy: log.energyLevel ?? 0,
+                    constipation: log.constipationSeverity ?? 0
+                )
+            )
         }
         days.sort { $0.date < $1.date }
         return (days, false)
     }
 
+    @MainActor
     private static func loadTraining(
         training: TrainingRepository,
         range: ProgressTimeRange
@@ -138,55 +161,54 @@ struct ProgressSnapshot {
             value: -(range.dayCount - 1),
             to: calendar.startOfDay(for: .now)
         ) ?? .now
-        let inRange = sessions.filter { $0.startedAt >= start }
+        var inRange: [TrainingSession] = []
+        for session in sessions where session.startedAt >= start {
+            inRange.append(session)
+        }
 
         guard !sessions.isEmpty, !inRange.isEmpty else {
             return (sampleTraining(dayCount: range.dayCount), true)
         }
 
-        let grouped = Dictionary(grouping: inRange) { calendar.startOfDay(for: $0.startedAt) }
-        let days: [DemoCatalog.TrainingDay] = (0..<range.dayCount).reversed().compactMap { offset in
+        var grouped: [Date: [TrainingSession]] = [:]
+        for session in inRange {
+            let day = calendar.startOfDay(for: session.startedAt)
+            grouped[day, default: []].append(session)
+        }
+        var days: [DemoCatalog.TrainingDay] = []
+        days.reserveCapacity(range.dayCount)
+        for offset in (0..<range.dayCount).reversed() {
             guard let date = calendar.date(
                 byAdding: .day,
                 value: -offset,
                 to: calendar.startOfDay(for: .now)
             ) else {
-                return nil
+                continue
             }
             let daySessions = grouped[date] ?? []
-            let zone2Seconds = daySessions.reduce(0.0) { $0 + $1.zoneDurations.zone2Seconds }
-            let totalSeconds = daySessions.reduce(0.0) { $0 + $1.zoneDurations.totalSeconds }
-            let avgHR = daySessions.compactMap(\.avgHR)
-            let avgHRValue = avgHR.isEmpty ? 0 : avgHR.reduce(0, +) / Double(avgHR.count)
-            return DemoCatalog.TrainingDay(
-                date: date,
-                zone2Minutes: Int((zone2Seconds / 60).rounded()),
-                avgHR: Int(avgHRValue.rounded()),
-                z2Percent: totalSeconds > 0 ? Int((zone2Seconds / totalSeconds * 100).rounded()) : 0
+            var zone2Seconds = 0.0
+            var totalSeconds = 0.0
+            var hrSum = 0.0
+            var hrCount = 0
+            for daySession in daySessions {
+                zone2Seconds += daySession.zoneDurations.zone2Seconds
+                totalSeconds += daySession.zoneDurations.totalSeconds
+                if let avgHR = daySession.avgHR {
+                    hrSum += avgHR
+                    hrCount += 1
+                }
+            }
+            let avgHRValue = hrCount == 0 ? 0 : hrSum / Double(hrCount)
+            days.append(
+                DemoCatalog.TrainingDay(
+                    date: date,
+                    zone2Minutes: Int((zone2Seconds / 60).rounded()),
+                    avgHR: Int(avgHRValue.rounded()),
+                    z2Percent: totalSeconds > 0 ? Int((zone2Seconds / totalSeconds * 100).rounded()) : 0
+                )
             )
         }
         return (days, false)
-    }
-
-    private static func macroDay(from log: DailyLog) -> DemoCatalog.MacroDay {
-        var totals = NutritionInfo()
-        for entry in log.foodEntries {
-            totals.calories += entry.nutrition.calories
-            totals.proteinG += entry.nutrition.proteinG
-            totals.carbsG += entry.nutrition.carbsG
-            totals.fatG += entry.nutrition.fatG
-            totals.fiberG += entry.nutrition.fiberG
-        }
-        return DemoCatalog.MacroDay(
-            date: log.date,
-            calories: totals.calories,
-            proteinG: totals.proteinG,
-            carbsG: totals.carbsG,
-            fatG: totals.fatG,
-            fiberG: totals.fiberG,
-            energy: log.energyLevel ?? 0,
-            constipation: log.constipationSeverity ?? 0
-        )
     }
 
     private static func sampleTraining(dayCount: Int) -> [DemoCatalog.TrainingDay] {

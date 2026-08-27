@@ -7,6 +7,7 @@ enum SessionExportFormat: String {
     case csv
 }
 
+@MainActor
 enum SessionExport {
     static func shareItems(for session: TrainingSession, format: SessionExportFormat) throws -> [URL] {
         let stamp = filenameStamp(session.startedAt)
@@ -28,8 +29,8 @@ enum SessionExport {
         }
     }
 
-    private static func payload(from session: TrainingSession) -> Payload {
-        Payload(
+    private static func payload(from session: TrainingSession) -> SessionExportPayload {
+        SessionExportPayload(
             id: session.id,
             startedAt: session.startedAt,
             endedAt: session.endedAt,
@@ -48,17 +49,31 @@ enum SessionExport {
             fatigueNote: session.fatigueNote,
             notes: session.notes,
             zoneDurations: session.zoneDurations,
-            intervals: intervalPayloads(from: session),
+            intervals: copiedIntervals(from: session),
             heartRate: session.downsampledHR
         )
     }
 
-    private static func intervalPayloads(from session: TrainingSession) -> [IntervalPayload] {
+    private static func copiedIntervals(from session: TrainingSession) -> [SessionExportInterval] {
         let sorted = session.sortedIntervals
-        var payloads: [IntervalPayload] = []
+        var payloads: [SessionExportInterval] = []
         payloads.reserveCapacity(sorted.count)
         for interval in sorted {
-            payloads.append(IntervalPayload(interval))
+            payloads.append(
+                SessionExportInterval(
+                    id: interval.id,
+                    kind: interval.kind,
+                    startedAt: interval.startedAt,
+                    endedAt: interval.endedAt,
+                    durationSeconds: interval.durationSeconds,
+                    startHR: interval.startHR,
+                    endHR: interval.endHR,
+                    avgHR: interval.avgHR,
+                    maxHR: interval.maxHR,
+                    minHR: interval.minHR,
+                    timeToReenterZone2Seconds: interval.timeToReenterZone2Seconds
+                )
+            )
         }
         return payloads
     }
@@ -66,7 +81,9 @@ enum SessionExport {
     private static func heartRateCSV(from session: TrainingSession) -> String {
         var rows = ["timestamp,bpm"]
         for point in session.downsampledHR {
-            rows.append("\(iso(point.timestamp)),\(csvNumber(point.bpm))")
+            let timestamp = SessionExportFormatting.iso(point.timestamp)
+            let bpm = SessionExportFormatting.csvNumber(point.bpm)
+            rows.append("\(timestamp),\(bpm)")
         }
         return rows.joined(separator: "\n") + "\n"
     }
@@ -82,23 +99,17 @@ enum SessionExport {
     }
 
     private static func lapRow(from interval: WorkoutInterval) -> String {
-        let ended: String
-        if let endedAt = interval.endedAt {
-            ended = iso(endedAt)
-        } else {
-            ended = ""
-        }
-        return [
+        [
             interval.kind.rawValue,
-            iso(interval.startedAt),
-            ended,
-            csvNumber(interval.durationSeconds),
-            csvNumber(interval.startHR),
-            csvNumber(interval.endHR),
-            csvNumber(interval.avgHR),
-            csvNumber(interval.maxHR),
-            csvNumber(interval.minHR),
-            csvNumber(interval.timeToReenterZone2Seconds)
+            SessionExportFormatting.iso(interval.startedAt),
+            SessionExportFormatting.iso(interval.endedAt),
+            SessionExportFormatting.csvNumber(interval.durationSeconds),
+            SessionExportFormatting.csvNumber(interval.startHR),
+            SessionExportFormatting.csvNumber(interval.endHR),
+            SessionExportFormatting.csvNumber(interval.avgHR),
+            SessionExportFormatting.csvNumber(interval.maxHR),
+            SessionExportFormatting.csvNumber(interval.minHR),
+            SessionExportFormatting.csvNumber(interval.timeToReenterZone2Seconds)
         ].joined(separator: ",")
     }
 
@@ -109,12 +120,19 @@ enum SessionExport {
         formatter.dateFormat = "yyyyMMdd-HHmm"
         return formatter.string(from: date)
     }
+}
 
-    nonisolated private static func iso(_ date: Date) -> String {
+nonisolated private enum SessionExportFormatting {
+    static func iso(_ date: Date) -> String {
         date.ISO8601Format()
     }
 
-    private static func csvNumber(_ value: Double?) -> String {
+    static func iso(_ date: Date?) -> String {
+        guard let date else { return "" }
+        return iso(date)
+    }
+
+    static func csvNumber(_ value: Double?) -> String {
         guard let value else { return "" }
         if value == value.rounded() {
             return String(Int(value.rounded()))
@@ -123,7 +141,7 @@ enum SessionExport {
     }
 }
 
-private struct Payload: Encodable {
+nonisolated private struct SessionExportPayload: Encodable, Sendable {
     var id: UUID
     var startedAt: Date
     var endedAt: Date?
@@ -142,11 +160,11 @@ private struct Payload: Encodable {
     var fatigueNote: String?
     var notes: String?
     var zoneDurations: ZoneDurations
-    var intervals: [IntervalPayload]
+    var intervals: [SessionExportInterval]
     var heartRate: [HRSamplePoint]
 }
 
-private struct IntervalPayload: Encodable {
+nonisolated private struct SessionExportInterval: Encodable, Sendable {
     var id: UUID
     var kind: IntervalKind
     var startedAt: Date
@@ -158,23 +176,9 @@ private struct IntervalPayload: Encodable {
     var maxHR: Double?
     var minHR: Double?
     var timeToReenterZone2Seconds: Double?
-
-    init(_ interval: WorkoutInterval) {
-        id = interval.id
-        kind = interval.kind
-        startedAt = interval.startedAt
-        endedAt = interval.endedAt
-        durationSeconds = interval.durationSeconds
-        startHR = interval.startHR
-        endHR = interval.endHR
-        avgHR = interval.avgHR
-        maxHR = interval.maxHR
-        minHR = interval.minHR
-        timeToReenterZone2Seconds = interval.timeToReenterZone2Seconds
-    }
 }
 
-private extension Payload {
+nonisolated private extension SessionExportPayload {
     func encodedJSON() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
