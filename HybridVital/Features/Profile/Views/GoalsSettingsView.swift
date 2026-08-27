@@ -15,43 +15,12 @@ struct GoalsSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
-                Text("Choose every aim that should shape food and training context. HybridVital stays conservative when cholesterol control is on.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 10) {
-                    ForEach(GoalType.allCases) { goal in
-                        Button {
-                            toggle(goal)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: goal.systemImage)
-                                    .foregroundStyle(selected.contains(goal) ? HVTheme.accent : .secondary)
-                                    .frame(width: 28)
-                                Text(goal.displayName)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: selected.contains(goal) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selected.contains(goal) ? HVTheme.accent : .tertiary)
-                                    .accessibilityHidden(true)
-                            }
-                            .padding(14)
-                            .background(HVTheme.card)
-                            .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(goal.displayName)
-                        .accessibilityValue(selected.contains(goal) ? "Selected" : "Not selected")
-                        .accessibilityAddTraits(.isButton)
-                    }
-                }
-
+                intro
+                goalList
                 HVPrimaryButton(title: "Save goals", systemImage: "checkmark") {
                     save()
                     dismiss()
                 }
-
                 HVDisclaimer()
             }
             .padding(HVTheme.pagePadding)
@@ -75,6 +44,25 @@ struct GoalsSettingsView: View {
         }
     }
 
+    private var intro: some View {
+        Text("Choose every aim that should shape food and training context. HybridVital stays conservative when cholesterol control is on.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+    }
+
+    private var goalList: some View {
+        VStack(spacing: 10) {
+            ForEach(GoalType.allCases) { goal in
+                GoalPickerRow(
+                    goal: goal,
+                    isSelected: selected.contains(goal)
+                ) {
+                    toggle(goal)
+                }
+            }
+        }
+    }
+
     private func toggle(_ goal: GoalType) {
         if selected.contains(goal) {
             selected.remove(goal)
@@ -88,5 +76,43 @@ struct GoalsSettingsView: View {
             profile.primaryGoals = GoalType.allCases.filter { selected.contains($0) }
         }
         didSave = true
+    }
+}
+
+private struct GoalPickerRow: View {
+    let goal: GoalType
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: goal.systemImage)
+                    .foregroundStyle(iconColor)
+                    .frame(width: 28)
+                Text(goal.displayName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(checkColor)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(HVTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(goal.displayName)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var iconColor: Color {
+        isSelected ? HVTheme.accent : Color.secondary
+    }
+
+    private var checkColor: Color {
+        isSelected ? HVTheme.accent : Color.secondary
     }
 }

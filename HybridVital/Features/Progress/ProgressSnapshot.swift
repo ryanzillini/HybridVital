@@ -118,9 +118,12 @@ struct ProgressSnapshot {
             return (fallback, true)
         }
 
-        let days = logs
-            .map(macroDay(from:))
-            .sorted { $0.date < $1.date }
+        var days: [DemoCatalog.MacroDay] = []
+        days.reserveCapacity(logs.count)
+        for log in logs {
+            days.append(macroDay(from: log))
+        }
+        days.sort { $0.date < $1.date }
         return (days, false)
     }
 
@@ -225,12 +228,12 @@ struct ProgressSnapshot {
 
     private func average(_ keyPath: KeyPath<DemoCatalog.MacroDay, Double>) -> Double {
         guard !macroDays.isEmpty else { return 0 }
-        return macroDays.map { $0[keyPath: keyPath] }.reduce(0, +) / Double(macroDays.count)
+        return macroDays.reduce(0) { $0 + $1[keyPath: keyPath] } / Double(macroDays.count)
     }
 
     private func average(_ value: (DemoCatalog.MacroDay) -> Double) -> Double {
         guard !macroDays.isEmpty else { return 0 }
-        return macroDays.map(value).reduce(0, +) / Double(macroDays.count)
+        return macroDays.reduce(0) { $0 + value($1) } / Double(macroDays.count)
     }
 }
 

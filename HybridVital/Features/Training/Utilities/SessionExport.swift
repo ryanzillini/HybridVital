@@ -48,16 +48,26 @@ enum SessionExport {
             fatigueNote: session.fatigueNote,
             notes: session.notes,
             zoneDurations: session.zoneDurations,
-            intervals: session.sortedIntervals.map(IntervalPayload.init),
+            intervals: intervalPayloads(from: session),
             heartRate: session.downsampledHR
         )
     }
 
+    private static func intervalPayloads(from session: TrainingSession) -> [IntervalPayload] {
+        let sorted = session.sortedIntervals
+        var payloads: [IntervalPayload] = []
+        payloads.reserveCapacity(sorted.count)
+        for interval in sorted {
+            payloads.append(IntervalPayload(interval))
+        }
+        return payloads
+    }
+
     private static func heartRateCSV(from session: TrainingSession) -> String {
         var rows = ["timestamp,bpm"]
-        rows.append(contentsOf: session.downsampledHR.map { point in
-            "\(iso(point.timestamp)),\(csvNumber(point.bpm))"
-        })
+        for point in session.downsampledHR {
+            rows.append("\(iso(point.timestamp)),\(csvNumber(point.bpm))")
+        }
         return rows.joined(separator: "\n") + "\n"
     }
 
@@ -65,21 +75,31 @@ enum SessionExport {
         var rows = [
             "kind,startedAt,endedAt,durationSeconds,startHR,endHR,avgHR,maxHR,minHR,timeToReenterZone2Seconds"
         ]
-        rows.append(contentsOf: session.sortedIntervals.map { interval in
-            [
-                interval.kind.rawValue,
-                iso(interval.startedAt),
-                interval.endedAt.map(iso) ?? "",
-                csvNumber(interval.durationSeconds),
-                csvNumber(interval.startHR),
-                csvNumber(interval.endHR),
-                csvNumber(interval.avgHR),
-                csvNumber(interval.maxHR),
-                csvNumber(interval.minHR),
-                csvNumber(interval.timeToReenterZone2Seconds)
-            ].joined(separator: ",")
-        })
+        for interval in session.sortedIntervals {
+            rows.append(lapRow(from: interval))
+        }
         return rows.joined(separator: "\n") + "\n"
+    }
+
+    private static func lapRow(from interval: WorkoutInterval) -> String {
+        let ended: String
+        if let endedAt = interval.endedAt {
+            ended = iso(endedAt)
+        } else {
+            ended = ""
+        }
+        return [
+            interval.kind.rawValue,
+            iso(interval.startedAt),
+            ended,
+            csvNumber(interval.durationSeconds),
+            csvNumber(interval.startHR),
+            csvNumber(interval.endHR),
+            csvNumber(interval.avgHR),
+            csvNumber(interval.maxHR),
+            csvNumber(interval.minHR),
+            csvNumber(interval.timeToReenterZone2Seconds)
+        ].joined(separator: ",")
     }
 
     private static func filenameStamp(_ date: Date) -> String {
@@ -90,7 +110,7 @@ enum SessionExport {
         return formatter.string(from: date)
     }
 
-    private static func iso(_ date: Date) -> String {
+    nonisolated private static func iso(_ date: Date) -> String {
         date.ISO8601Format()
     }
 
