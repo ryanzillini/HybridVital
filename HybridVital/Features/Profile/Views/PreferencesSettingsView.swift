@@ -22,51 +22,27 @@ struct PreferencesSettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
-                CookingSkillSection(cookingSkill: $cookingSkill)
-                TagListEditor(
-                    title: "Allergies",
-                    subtitle: "Always excluded from suggestions",
-                    items: $allergies,
-                    draft: $allergyDraft,
-                    placeholder: "Add allergy",
-                    addLabel: "Add allergy"
-                )
-                TagListEditor(
-                    title: "Disliked foods",
-                    subtitle: "Skip unless you ask for them",
-                    items: $dislikedFoods,
-                    draft: $dislikeDraft,
-                    placeholder: "Add a dislike",
-                    addLabel: "Add disliked food"
-                )
-                LikedFoodsEditor(preferences: $preferences, draft: $likeDraft)
-                HVPrimaryButton(title: "Save preferences", systemImage: "checkmark") {
-                    save()
-                    dismiss()
-                }
-                HVDisclaimer()
-            }
-            .padding(HVTheme.pagePadding)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .navigationTitle("Food preferences")
-        .hvInlineNav()
-        .hvScreen()
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    save()
-                    dismiss()
-                }
-                .fontWeight(.semibold)
-            }
-        }
-        .onDisappear {
-            if !didSave {
-                save()
-            }
+        PreferencesSettingsScreen(
+            cookingSkill: $cookingSkill,
+            allergies: $allergies,
+            allergyDraft: $allergyDraft,
+            dislikedFoods: $dislikedFoods,
+            dislikeDraft: $dislikeDraft,
+            preferences: $preferences,
+            likeDraft: $likeDraft,
+            onSave: saveAndDismiss,
+            onAutoSave: saveIfNeeded
+        )
+    }
+
+    private func saveAndDismiss() {
+        save()
+        dismiss()
+    }
+
+    private func saveIfNeeded() {
+        if !didSave {
+            save()
         }
     }
 
@@ -81,21 +57,117 @@ struct PreferencesSettingsView: View {
     }
 }
 
+private struct PreferencesSettingsScreen: View {
+    @Binding var cookingSkill: CookingSkillLevel
+    @Binding var allergies: [String]
+    @Binding var allergyDraft: String
+    @Binding var dislikedFoods: [String]
+    @Binding var dislikeDraft: String
+    @Binding var preferences: [FoodPreference]
+    @Binding var likeDraft: String
+    let onSave: () -> Void
+    let onAutoSave: () -> Void
+
+    var body: some View {
+        scroll
+            .navigationTitle("Food preferences")
+            .modifier(PreferencesChrome(onSave: onSave, onAutoSave: onAutoSave))
+    }
+
+    private var scroll: some View {
+        ScrollView {
+            form
+        }
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
+            cookingAndTags
+            likedAndSave
+        }
+        .padding(HVTheme.pagePadding)
+    }
+
+    private var cookingAndTags: some View {
+        VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
+            CookingSkillSection(cookingSkill: $cookingSkill)
+            allergiesEditor
+            dislikesEditor
+        }
+    }
+
+    private var likedAndSave: some View {
+        VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
+            LikedFoodsEditor(preferences: $preferences, draft: $likeDraft)
+            HVPrimaryButton(
+                title: "Save preferences",
+                systemImage: "checkmark",
+                action: onSave
+            )
+            HVDisclaimer()
+        }
+    }
+
+    private var allergiesEditor: TagListEditor {
+        TagListEditor(
+            title: "Allergies",
+            subtitle: "Always excluded from suggestions",
+            items: $allergies,
+            draft: $allergyDraft,
+            placeholder: "Add allergy",
+            addLabel: "Add allergy"
+        )
+    }
+
+    private var dislikesEditor: TagListEditor {
+        TagListEditor(
+            title: "Disliked foods",
+            subtitle: "Skip unless you ask for them",
+            items: $dislikedFoods,
+            draft: $dislikeDraft,
+            placeholder: "Add a dislike",
+            addLabel: "Add disliked food"
+        )
+    }
+}
+
+private struct PreferencesChrome: ViewModifier {
+    let onSave: () -> Void
+    let onAutoSave: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .hvInlineNav()
+            .hvScreen()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: onSave)
+                        .fontWeight(.semibold)
+                }
+            }
+            .onDisappear(perform: onAutoSave)
+    }
+}
+
 private struct CookingSkillSection: View {
     @Binding var cookingSkill: CookingSkillLevel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HVSectionHeader(title: "Cooking skill")
-            VStack(spacing: 8) {
-                ForEach(CookingSkillLevel.allCases) { level in
-                    CookingSkillRow(
-                        level: level,
-                        isSelected: cookingSkill == level
-                    ) {
-                        cookingSkill = level
-                    }
-                }
+            skillList
+        }
+    }
+
+    private var skillList: some View {
+        VStack(spacing: 8) {
+            ForEach(CookingSkillLevel.allCases) { level in
+                CookingSkillRow(
+                    level: level,
+                    isSelected: cookingSkill == level,
+                    action: { cookingSkill = level }
+                )
             }
         }
     }
@@ -108,22 +180,26 @@ private struct CookingSkillRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                Text(level.displayName)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(checkColor)
-                    .accessibilityHidden(true)
-            }
-            .padding(14)
-            .background(HVTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
+            rowLabel
         }
         .buttonStyle(.plain)
         .accessibilityLabel(level.displayName)
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
+    }
+
+    private var rowLabel: some View {
+        HStack {
+            Text(level.displayName)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+            Spacer()
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(checkColor)
+                .accessibilityHidden(true)
+        }
+        .padding(14)
+        .background(HVTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
     }
 
     private var checkColor: Color {
@@ -146,11 +222,7 @@ private struct TagListEditor: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             editorRow
-            ForEach(items, id: \.self) { name in
-                TagRow(name: name) {
-                    items.removeAll { $0 == name }
-                }
-            }
+            tagList
         }
     }
 
@@ -158,7 +230,7 @@ private struct TagListEditor: View {
         HStack(spacing: 8) {
             TextField(placeholder, text: $draft)
                 .textInputAutocapitalization(.words)
-                .onSubmit { addItem() }
+                .onSubmit(addItem)
                 .padding(12)
                 .background(HVTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusS, style: .continuous))
@@ -172,6 +244,12 @@ private struct TagListEditor: View {
         }
     }
 
+    private var tagList: some View {
+        ForEach(items, id: \.self) { name in
+            TagRow(name: name, onRemove: { remove(name) })
+        }
+    }
+
     private func addItem() {
         let value = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
@@ -181,6 +259,10 @@ private struct TagListEditor: View {
         }
         items.append(value)
         draft = ""
+    }
+
+    private func remove(_ name: String) {
+        items.removeAll { $0 == name }
     }
 }
 
@@ -216,18 +298,17 @@ private struct LikedFoodsEditor: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             editorRow
-            if preferences.isEmpty {
-                Text("None yet — add yogurt, salmon, or whatever you actually eat.")
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-            }
-            ForEach(preferences, id: \.name) { item in
-                LikedFoodRow(
-                    item: item,
-                    onToggleLike: { toggleLike(item.name) },
-                    onRemove: { preferences.removeAll { $0.name == item.name } }
-                )
-            }
+            emptyCaption
+            likedList
+        }
+    }
+
+    @ViewBuilder
+    private var emptyCaption: some View {
+        if preferences.isEmpty {
+            Text("None yet — add yogurt, salmon, or whatever you actually eat.")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -235,7 +316,7 @@ private struct LikedFoodsEditor: View {
         HStack(spacing: 8) {
             TextField("Add a liked food", text: $draft)
                 .textInputAutocapitalization(.words)
-                .onSubmit { addLike() }
+                .onSubmit(addLike)
                 .padding(12)
                 .background(HVTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusS, style: .continuous))
@@ -246,6 +327,16 @@ private struct LikedFoodsEditor: View {
             }
             .accessibilityLabel("Add liked food")
             .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private var likedList: some View {
+        ForEach(preferences, id: \.name) { item in
+            LikedFoodRow(
+                item: item,
+                onToggleLike: { toggleLike(item.name) },
+                onRemove: { remove(item.name) }
+            )
         }
     }
 
@@ -263,6 +354,10 @@ private struct LikedFoodsEditor: View {
     private func toggleLike(_ name: String) {
         guard let index = preferences.firstIndex(where: { $0.name == name }) else { return }
         preferences[index].isLiked.toggle()
+    }
+
+    private func remove(_ name: String) {
+        preferences.removeAll { $0.name == name }
     }
 }
 
