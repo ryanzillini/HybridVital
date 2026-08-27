@@ -1,6 +1,9 @@
 # Tech Stack
 
-**Last Updated:** May 6, 2026
+**Canonical architecture:** [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md)
+
+**Last Updated:** May 6, 2026 (Xcode project currently sets iOS 26.4; prefer the project file over this note for the deployment target.)
+
 
 ## Core Platform
 

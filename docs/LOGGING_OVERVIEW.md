@@ -20,12 +20,17 @@ Effortless <15s logging is the #1 retention driver. Photo-first (Grok Vision) + 
 - **Search fallback**: USDA FoodData Central API + Open Food Facts (via `openfoodfacts-swift` SPM)
 - **Storage**: SwiftData `FoodEntry` + `DailyLog` hub (HealthKit golden source for nutrients)
 
-## Screens (each will have own .md)
+## Screens
 
-- QuickLogEntryView
+Canonical per-screen docs: [screens/README.md](screens/README.md) (Food section).
+
+Originally named:
+
+- QuickLogEntryView → `QuickFoodLogView`
 - FoodAnalysisReviewSheet
 - FoodSearchView
 - DailyFoodHistoryView
+
 
 ## Non-negotiables
 
