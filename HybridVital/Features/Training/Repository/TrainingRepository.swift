@@ -14,6 +14,7 @@ final class TrainingRepository {
         var descriptor = FetchDescriptor<UserProfile>(sortBy: [SortDescriptor(\.createdAt)])
         descriptor.fetchLimit = 1
         if let existing = try? context.fetch(descriptor).first {
+            sanitize(existing)
             return existing
         }
         let profile = UserProfile()
@@ -21,6 +22,19 @@ final class TrainingRepository {
         context.insert(profile)
         saveContext()
         return profile
+    }
+
+    private func sanitize(_ profile: UserProfile) {
+        let issues = profile.commonIssues.filter(\.isSelectable)
+        let goals = profile.primaryGoals.filter(\.isSelectable)
+        guard issues != profile.commonIssues || goals != profile.primaryGoals else {
+            return
+        }
+        print("[Training] Dropped unknown profile enum values from local store")
+        profile.commonIssues = issues
+        profile.primaryGoals = goals
+        profile.updatedAt = .now
+        saveContext()
     }
 
     func saveZoneSettings(_ settings: HeartRateZoneSettings) {

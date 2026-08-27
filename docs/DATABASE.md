@@ -160,6 +160,8 @@ Stored inline on models via `Codable` (SwiftData transforms).
 
 Enums (all `String` raw, Codable): `GoalType`, `CookingSkillLevel`, `HealthIssue`, `BiologicalSex`, `MealType`, `LogSource`, `IntervalKind` (shared target).
 
+SwiftData decodes these with `try!`. Unknown raw values from older local stores (for example a retired `HealthIssue.bloodPressureWatch`) must not throw. Array enums (`GoalType`, `HealthIssue`) decode unknown strings as `.unrecognized`, hide that case from UI via `selectableCases`, and `TrainingRepository.getOrCreateProfile()` strips them on load. Single-value enums fall back (`CookingSkillLevel` → `.low`, `MealType` → `.other`, `LogSource` → `.manual`, `BiologicalSex` → `.other`).
+
 UI helpers (`displayName`, `systemImage`) live on the enums in `CoreModel.swift`. Keep them there so every screen shares copy.
 
 ---

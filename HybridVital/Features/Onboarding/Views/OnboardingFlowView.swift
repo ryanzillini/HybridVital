@@ -21,10 +21,10 @@ final class OnboardingFlowViewModel {
     init(services: AppServices) {
         self.services = services
         let profile = services.training.getOrCreateProfile()
-        selectedGoals = Set(profile.primaryGoals)
+        selectedGoals = Set(profile.primaryGoals.filter(\.isSelectable))
         hasFamilialHypocholesterolemia = profile.hasFamilialHypocholesterolemia
         cookingSkill = profile.cookingSkillLevel
-        commonIssues = Set(profile.commonIssues)
+        commonIssues = Set(profile.commonIssues.filter(\.isSelectable))
         proteinG = profile.targetMacros.proteinG
         carbsG = profile.targetMacros.carbsG
         fatG = profile.targetMacros.fatG
@@ -38,11 +38,11 @@ final class OnboardingFlowViewModel {
     var isLastPage: Bool { page >= pageCount - 1 }
 
     var orderedGoals: [GoalType] {
-        GoalType.allCases.filter { selectedGoals.contains($0) }
+        GoalType.selectableCases.filter { selectedGoals.contains($0) }
     }
 
     var orderedIssues: [HealthIssue] {
-        HealthIssue.allCases.filter { commonIssues.contains($0) }
+        HealthIssue.selectableCases.filter { commonIssues.contains($0) }
     }
 
     var calorieEstimate: Int {
@@ -56,10 +56,10 @@ final class OnboardingFlowViewModel {
 
     func persist() {
         services.training.saveProfile { profile in
-            profile.primaryGoals = GoalType.allCases.filter { selectedGoals.contains($0) }
+            profile.primaryGoals = GoalType.selectableCases.filter { selectedGoals.contains($0) }
             profile.hasFamilialHypocholesterolemia = hasFamilialHypocholesterolemia
             profile.cookingSkillLevel = cookingSkill
-            profile.commonIssues = HealthIssue.allCases.filter { commonIssues.contains($0) }
+            profile.commonIssues = HealthIssue.selectableCases.filter { commonIssues.contains($0) }
             profile.targetMacros = MacroTargets(proteinG: proteinG, carbsG: carbsG, fatG: fatG)
             profile.weeklyZone2TargetMinutes = weeklyZone2Minutes
         }
@@ -217,7 +217,7 @@ struct OnboardingFlowView: View {
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(GoalType.allCases) { goal in
+                    ForEach(GoalType.selectableCases) { goal in
                         OnboardingChip(
                             title: goal.displayName,
                             systemImage: goal.systemImage,
@@ -294,7 +294,7 @@ struct OnboardingFlowView: View {
                     .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(HealthIssue.allCases) { issue in
+                    ForEach(HealthIssue.selectableCases) { issue in
                         OnboardingChip(
                             title: issue.displayName,
                             systemImage: issue.chipImage,
@@ -460,6 +460,7 @@ private extension HealthIssue {
         case .lowEnergy: "battery.50percent"
         case .inflammation: "flame.fill"
         case .highCholesterol: "drop.fill"
+        case .unrecognized: "questionmark.circle"
         }
     }
 }

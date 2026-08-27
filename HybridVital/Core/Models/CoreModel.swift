@@ -5,9 +5,45 @@ import Foundation
 
 // MARK: - Enums & Value Types (define BEFORE any @Model)
 
-enum GoalType: String, Codable, CaseIterable, Identifiable {
+/// SwiftData decodes persisted string enums with `try!`. Unknown raw values
+/// (from older local builds) must not throw or the app hard-crashes on launch.
+nonisolated enum PersistedStringEnum {
+    static func decode<Value: RawRepresentable>(
+        _ type: Value.Type,
+        from decoder: Decoder,
+        fallback: Value,
+        logName: String
+    ) throws -> Value where Value.RawValue == String {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        if let value = Value(rawValue: raw) {
+            return value
+        }
+        print("[\(logName)] Ignoring unknown value: \(raw)")
+        return fallback
+    }
+
+    static func encode<Value: RawRepresentable>(
+        _ value: Value,
+        to encoder: Encoder
+    ) throws where Value.RawValue == String {
+        var container = encoder.singleValueContainer()
+        try container.encode(value.rawValue)
+    }
+}
+
+enum GoalType: String, CaseIterable, Identifiable {
     case cholesterolControl, hybridAthlete, longevity, muscleGain, fatLoss
+    case unrecognized
+
     var id: String { rawValue }
+
+    static var selectableCases: [GoalType] {
+        allCases.filter(\.isSelectable)
+    }
+
+    var isSelectable: Bool { self != .unrecognized }
+
     var displayName: String {
         switch self {
         case .cholesterolControl: "Cholesterol control"
@@ -15,6 +51,7 @@ enum GoalType: String, Codable, CaseIterable, Identifiable {
         case .longevity: "Longevity"
         case .muscleGain: "Muscle gain"
         case .fatLoss: "Fat loss"
+        case .unrecognized: "Other"
         }
     }
     var systemImage: String {
@@ -24,11 +61,27 @@ enum GoalType: String, Codable, CaseIterable, Identifiable {
         case .longevity: "leaf.fill"
         case .muscleGain: "dumbbell.fill"
         case .fatLoss: "flame.fill"
+        case .unrecognized: "questionmark.circle"
         }
     }
 }
 
-enum CookingSkillLevel: String, Codable, CaseIterable, Identifiable {
+extension GoalType: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .unrecognized,
+            logName: "GoalType"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
+    }
+}
+
+enum CookingSkillLevel: String, CaseIterable, Identifiable {
     case low, medium, high
     var id: String { rawValue }
     var displayName: String {
@@ -40,20 +93,60 @@ enum CookingSkillLevel: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum HealthIssue: String, Codable, CaseIterable, Identifiable {
+extension CookingSkillLevel: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .low,
+            logName: "CookingSkillLevel"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
+    }
+}
+
+enum HealthIssue: String, CaseIterable, Identifiable {
     case constipation, lowEnergy, inflammation, highCholesterol
+    case unrecognized
+
     var id: String { rawValue }
+
+    static var selectableCases: [HealthIssue] {
+        allCases.filter(\.isSelectable)
+    }
+
+    var isSelectable: Bool { self != .unrecognized }
+
     var displayName: String {
         switch self {
         case .constipation: "Constipation"
         case .lowEnergy: "Low energy"
         case .inflammation: "Inflammation"
         case .highCholesterol: "High cholesterol"
+        case .unrecognized: "Other"
         }
     }
 }
 
-enum BiologicalSex: String, Codable, CaseIterable, Identifiable {
+extension HealthIssue: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .unrecognized,
+            logName: "HealthIssue"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
+    }
+}
+
+enum BiologicalSex: String, CaseIterable, Identifiable {
     case male, female, other
     var id: String { rawValue }
     var displayName: String {
@@ -65,7 +158,22 @@ enum BiologicalSex: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum MealType: String, Codable, CaseIterable, Identifiable {
+extension BiologicalSex: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .other,
+            logName: "BiologicalSex"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
+    }
+}
+
+enum MealType: String, CaseIterable, Identifiable {
     case breakfast, lunch, dinner, snack, other
     var id: String { rawValue }
     var displayName: String {
@@ -79,7 +187,22 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum LogSource: String, Codable, CaseIterable, Identifiable {
+extension MealType: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .other,
+            logName: "MealType"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
+    }
+}
+
+enum LogSource: String, CaseIterable, Identifiable {
     case grokVision, manual, usda, openFoodFacts, voice
     var id: String { rawValue }
     var displayName: String {
@@ -90,6 +213,21 @@ enum LogSource: String, Codable, CaseIterable, Identifiable {
         case .openFoodFacts: "Open Food Facts"
         case .voice: "Voice"
         }
+    }
+}
+
+extension LogSource: Codable {
+    init(from decoder: Decoder) throws {
+        self = try PersistedStringEnum.decode(
+            Self.self,
+            from: decoder,
+            fallback: .manual,
+            logName: "LogSource"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try PersistedStringEnum.encode(self, to: encoder)
     }
 }
 

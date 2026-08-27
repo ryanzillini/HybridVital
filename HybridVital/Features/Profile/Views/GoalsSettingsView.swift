@@ -9,7 +9,7 @@ struct GoalsSettingsView: View {
     init(services: AppServices) {
         self.services = services
         let profile = services.training.getOrCreateProfile()
-        _selected = State(initialValue: Set(profile.primaryGoals))
+        _selected = State(initialValue: Set(profile.primaryGoals.filter(\.isSelectable)))
     }
 
     var body: some View {
@@ -52,7 +52,7 @@ struct GoalsSettingsView: View {
 
     private var goalList: some View {
         VStack(spacing: 10) {
-            ForEach(GoalType.allCases) { goal in
+            ForEach(GoalType.selectableCases) { goal in
                 GoalPickerRow(
                     goal: goal,
                     isSelected: selected.contains(goal)
@@ -73,7 +73,7 @@ struct GoalsSettingsView: View {
 
     private func save() {
         services.training.saveProfile { profile in
-            profile.primaryGoals = GoalType.allCases.filter { selected.contains($0) }
+            profile.primaryGoals = GoalType.selectableCases.filter { selected.contains($0) }
         }
         didSave = true
     }

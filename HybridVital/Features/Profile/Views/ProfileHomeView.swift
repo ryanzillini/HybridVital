@@ -42,7 +42,7 @@ struct ProfileHomeView: View {
                     .foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(profile.primaryGoals) { goal in
+                        ForEach(profile.primaryGoals.filter(\.isSelectable)) { goal in
                             Label(goal.displayName, systemImage: goal.systemImage)
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 10)
@@ -69,7 +69,7 @@ struct ProfileHomeView: View {
                     tint: HVTheme.warning
                 )
             }
-            ForEach(profile.commonIssues) { issue in
+            ForEach(profile.commonIssues.filter(\.isSelectable)) { issue in
                 factRow(
                     title: issue.displayName,
                     subtitle: "Tracked as a standing context",

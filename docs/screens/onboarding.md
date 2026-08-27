@@ -25,7 +25,7 @@ Five-page pager to set goals, health context, and personal targets without imply
 
 ## Data
 
-Seeds from `training.getOrCreateProfile()`. Skip still sets the AppStorage flag so the portfolio can enter the app immediately.
+Seeds from `training.getOrCreateProfile()` (unknown persisted enum values are dropped). Skip still sets the AppStorage flag so the portfolio can enter the app immediately.
 
 ## Actions
 
