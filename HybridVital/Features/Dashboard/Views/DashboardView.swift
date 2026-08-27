@@ -13,7 +13,7 @@ final class DashboardViewModel {
     var sessions: [TrainingSession] = []
 
     /// Personal logging target used for fiber bars. Not a medical recommendation.
-    var fiberTargetG: Double { FoodLoggingTargets.fiberG }
+    let fiberTargetG: Double = 35
 
     init(services: AppServices) {
         self.services = services
@@ -42,7 +42,16 @@ final class DashboardViewModel {
     }
 
     var sampleDayTotals: NutritionInfo {
-        NutritionInfo.sum(DemoCatalog.todayMeals.map(\.nutrition))
+        DemoCatalog.todayMeals.reduce(into: NutritionInfo()) { totals, meal in
+            totals.calories += meal.nutrition.calories
+            totals.proteinG += meal.nutrition.proteinG
+            totals.carbsG += meal.nutrition.carbsG
+            totals.fatG += meal.nutrition.fatG
+            totals.fiberG += meal.nutrition.fiberG
+            totals.sugarG += meal.nutrition.sugarG
+            totals.cholesterolMg += meal.nutrition.cholesterolMg
+            totals.sodiumMg += meal.nutrition.sodiumMg
+        }
     }
 
     var sampleWeekProteinAvgG: Double {
