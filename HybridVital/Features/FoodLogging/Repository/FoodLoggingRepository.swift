@@ -107,4 +107,30 @@ final class FoodLoggingRepository {
         
         return totals
     }
+
+    func logs(inLastDays days: Int) -> [DailyLog] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -days, to: .now) ?? .now)
+        let predicate = #Predicate<DailyLog> { log in
+            log.date >= start
+        }
+        let descriptor = FetchDescriptor<DailyLog>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func saveDailyCheckIn(energy: Int, constipation: Int, notes: String?) {
+        let log = getOrCreateTodayLog()
+        log.energyLevel = energy
+        log.constipationSeverity = constipation
+        log.notes = notes
+        log.updatedAt = .now
+        do {
+            try context.save()
+        } catch {
+            print("[FoodLogging] Error saving check-in: \(error)")
+        }
+    }
 }
