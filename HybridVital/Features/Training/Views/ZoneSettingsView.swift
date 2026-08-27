@@ -53,7 +53,8 @@ struct ZoneSettingsView: View {
                 }
             }
             .navigationTitle("Heart Rate Zones")
-            .navigationBarTitleDisplayMode(.inline)
+            .hvInlineNav()
+            .hvScreen()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -67,6 +68,8 @@ struct ZoneSettingsView: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
+        .tint(HVTheme.accent)
     }
 
     private var maxHRBinding: Binding<Int> {

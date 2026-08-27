@@ -30,6 +30,13 @@ final class TrainingRepository {
         saveContext()
     }
 
+    func saveProfile(_ mutate: (UserProfile) -> Void) {
+        let profile = getOrCreateProfile()
+        mutate(profile)
+        profile.updatedAt = .now
+        saveContext()
+    }
+
     func save(session: TrainingSession) {
         context.insert(session)
         for interval in session.intervals where interval.modelContext == nil {

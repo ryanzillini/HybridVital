@@ -12,87 +12,42 @@ struct TrainingHubView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Button {
-                        showingTracker = true
-                    } label: {
-                        VStack(spacing: 12) {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 44))
-                                .foregroundStyle(.green)
-                            Text("Start Zone 2")
-                                .font(.title2.bold())
-                            Text("Live HR · jog / walk laps")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 180)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
-                    .listRowBackground(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
-                            .padding(.horizontal, 16)
-                            .padding(.top, 12)
-                    )
-                    .listRowSeparator(.hidden)
-
+            ScrollView {
+                VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
+                    startCard
+                    weekCard
                     Button {
                         showingZones = true
                     } label: {
-                        Label("Heart rate zones", systemImage: "slider.horizontal.3")
-                            .frame(maxWidth: .infinity)
+                        HStack(spacing: 12) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.title3)
+                                .foregroundStyle(HVTheme.accent)
+                            Text("Heart rate zones")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(16)
+                        .background(HVTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
                     }
-                    .buttonStyle(.bordered)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Heart rate zones")
                     Text("Wear the COROS armband, start a session, and tap when you cross into Zone 3 or return to jogging.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                    sessionsSection
+                    HVDisclaimer()
                 }
-
-                Section {
-                    if sessions.isEmpty {
-                        ContentUnavailableView(
-                            "No sessions yet",
-                            systemImage: "figure.run",
-                            description: Text("Your jog/walk history will show up here.")
-                        )
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                    } else {
-                        ForEach(sessions, id: \.id) { session in
-                            sessionRow(session)
-                                .contentShape(Rectangle())
-                                .onTapGesture { selectedSession = session }
-                                .accessibilityAddTraits(.isButton)
-                                .listRowBackground(Color(.secondarySystemBackground))
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button("Delete", role: .destructive) {
-                                        sessionPendingDelete = session
-                                    }
-                                }
-                                .contextMenu {
-                                    Button("Delete Session", role: .destructive) {
-                                        sessionPendingDelete = session
-                                    }
-                                }
-                        }
-                    }
-                } header: {
-                    if !sessions.isEmpty {
-                        Text("Recent sessions")
-                    }
-                }
+                .padding(.horizontal, HVTheme.pagePadding)
+                .padding(.bottom, 32)
             }
-            .listStyle(.plain)
             .navigationTitle("Training")
+            .hvScreen()
             .fullScreenCover(isPresented: $showingTracker, onDismiss: loadSessions) {
                 LiveTrackerView(repository: repository) {
                     showingTracker = false
@@ -133,6 +88,113 @@ struct TrainingHubView: View {
             }
             .task { loadSessions() }
         }
+        .preferredColorScheme(.dark)
+    }
+
+    private var startCard: some View {
+        Button {
+            showingTracker = true
+        } label: {
+            VStack(spacing: 12) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(HVTheme.accent)
+                    .symbolRenderingMode(.hierarchical)
+                Text("Start Zone 2")
+                    .font(.title2.bold())
+                    .foregroundStyle(.primary)
+                Text("Live HR · jog / walk laps")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 180)
+            .background(HVTheme.cardElevated)
+            .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusL, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: HVTheme.radiusL, style: .continuous)
+                    .stroke(HVTheme.accent.opacity(0.25), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Start Zone 2")
+        .accessibilityHint("Opens the live Zone 2 tracker")
+    }
+
+    private var weekCard: some View {
+        let completed = weekMinutes
+        let target = max(repository.getOrCreateProfile().weeklyZone2TargetMinutes, 1)
+        let isSample = sessions.isEmpty
+        return HVCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HVSectionHeader(
+                    title: "This week",
+                    accessory: isSample ? "Sample week" : nil
+                )
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text("\(completed)")
+                        .font(HVFont.heroMetric(36))
+                        .foregroundStyle(HVTheme.accent)
+                        .monospacedDigit()
+                    Text("of \(target) min")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                HVProgressBar(progress: Double(completed) / Double(target), tint: HVTheme.accent)
+                Text("Volume toward your personal Zone 2 target — not a prescription to push harder.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var weekMinutes: Int {
+        if sessions.isEmpty {
+            return DemoCatalog.weeklyZone2CompletedMinutes
+        }
+        let calendar = Calendar.current
+        guard let week = calendar.dateInterval(of: .weekOfYear, for: .now) else { return 0 }
+        return sessions.reduce(0) { running, session in
+            guard session.startedAt >= week.start, session.startedAt < week.end else { return running }
+            return running + Int(session.zoneDurations.zone2Seconds / 60)
+        }
+    }
+
+    @ViewBuilder
+    private var sessionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HVSectionHeader(
+                title: "Recent sessions",
+                accessory: sessions.isEmpty ? nil : "\(sessions.count)"
+            )
+
+            if sessions.isEmpty {
+                HVCard {
+                    HVEmptyState(
+                        title: "No sessions yet",
+                        systemImage: "figure.run",
+                        description: "Your jog/walk history will show up here after you finish a Zone 2 run."
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                }
+            } else {
+                ForEach(sessions, id: \.id) { session in
+                    Button {
+                        selectedSession = session
+                    } label: {
+                        sessionRow(session)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(.isButton)
+                    .contextMenu {
+                        Button("Delete Session", role: .destructive) {
+                            sessionPendingDelete = session
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func sessionRow(_ session: TrainingSession) -> some View {
@@ -140,6 +202,7 @@ struct TrainingHubView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(session.startedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.body.bold())
+                    .foregroundStyle(.primary)
                 Text("\(DurationFormat.clock(session.durationSeconds)) · \(session.intervalCount) laps")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -149,13 +212,20 @@ struct TrainingHubView: View {
                 if let avg = session.avgHR {
                     Text("\(Int(avg.rounded())) avg")
                         .font(.body.bold())
+                        .foregroundStyle(.primary)
                 }
                 Text("\(Int((session.zoneDurations.zone2Percent * 100).rounded()))% Z2")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(HVTheme.accent)
             }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 6)
+        .padding(14)
+        .background(HVTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: HVTheme.radiusM, style: .continuous))
+        .accessibilityLabel("Session \(session.startedAt.formatted(date: .abbreviated, time: .shortened))")
     }
 
     private func delete(_ session: TrainingSession) {

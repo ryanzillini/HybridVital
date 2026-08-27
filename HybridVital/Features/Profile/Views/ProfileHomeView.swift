@@ -3,7 +3,7 @@ import SwiftUI
 
 struct ProfileHomeView: View {
     let services: AppServices
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingZones = false
     @State private var profile: UserProfile
 
@@ -13,23 +13,21 @@ struct ProfileHomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
-                    header
-                    profileFacts
-                    settingsSection
-                    onboardingSection
-                    HVDisclaimer()
-                }
-                .padding(HVTheme.pagePadding)
+        ScrollView {
+            VStack(alignment: .leading, spacing: HVTheme.stackSpacing) {
+                header
+                profileFacts
+                settingsSection
+                onboardingSection
+                HVDisclaimer()
             }
-            .navigationTitle("Profile")
-            .hvScreen()
-            .onAppear { reloadProfile() }
-            .sheet(isPresented: $showingZones, onDismiss: reloadProfile) {
-                ZoneSettingsView(repository: services.training)
-            }
+            .padding(HVTheme.pagePadding)
+        }
+        .navigationTitle("Profile")
+        .hvScreen()
+        .onAppear { reloadProfile() }
+        .sheet(isPresented: $showingZones, onDismiss: reloadProfile) {
+            ZoneSettingsView(repository: services.training)
         }
         .preferredColorScheme(.dark)
     }
@@ -154,7 +152,7 @@ struct ProfileHomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Onboarding completed", isOn: $hasCompletedOnboarding)
                     .tint(HVTheme.accent)
-                Text("Turn this off to replay onboarding the next time HybridVital opens.")
+                Text("Turn this off to return to onboarding immediately.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -221,10 +219,13 @@ struct ProfileHomeView: View {
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = ModelContext(container)
-    ProfileHomeView(
-        services: AppServices(
-            food: FoodLoggingRepository(context: context),
-            training: TrainingRepository(context: context)
+    NavigationStack {
+        ProfileHomeView(
+            services: AppServices(
+                food: FoodLoggingRepository(context: context),
+                training: TrainingRepository(context: context)
+            )
         )
-    )
+    }
+    .preferredColorScheme(.dark)
 }

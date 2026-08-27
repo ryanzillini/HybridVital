@@ -5,20 +5,64 @@ import Foundation
 
 // MARK: - Enums & Value Types (define BEFORE any @Model)
 
-enum GoalType: String, Codable, CaseIterable {
+enum GoalType: String, Codable, CaseIterable, Identifiable {
     case cholesterolControl, hybridAthlete, longevity, muscleGain, fatLoss
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .cholesterolControl: "Cholesterol control"
+        case .hybridAthlete: "Hybrid athlete"
+        case .longevity: "Longevity"
+        case .muscleGain: "Muscle gain"
+        case .fatLoss: "Fat loss"
+        }
+    }
+    var systemImage: String {
+        switch self {
+        case .cholesterolControl: "drop.fill"
+        case .hybridAthlete: "figure.run"
+        case .longevity: "leaf.fill"
+        case .muscleGain: "dumbbell.fill"
+        case .fatLoss: "flame.fill"
+        }
+    }
 }
 
-enum CookingSkillLevel: String, Codable {
+enum CookingSkillLevel: String, Codable, CaseIterable, Identifiable {
     case low, medium, high
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .low: "Low — keep meals simple"
+        case .medium: "Medium"
+        case .high: "High"
+        }
+    }
 }
 
-enum HealthIssue: String, Codable {
+enum HealthIssue: String, Codable, CaseIterable, Identifiable {
     case constipation, lowEnergy, inflammation, highCholesterol
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .constipation: "Constipation"
+        case .lowEnergy: "Low energy"
+        case .inflammation: "Inflammation"
+        case .highCholesterol: "High cholesterol"
+        }
+    }
 }
 
-enum BiologicalSex: String, Codable {
+enum BiologicalSex: String, Codable, CaseIterable, Identifiable {
     case male, female, other
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .male: "Male"
+        case .female: "Female"
+        case .other: "Other"
+        }
+    }
 }
 
 enum MealType: String, Codable, CaseIterable, Identifiable {
@@ -35,8 +79,18 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum LogSource: String, Codable {
+enum LogSource: String, Codable, CaseIterable, Identifiable {
     case grokVision, manual, usda, openFoodFacts, voice
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .grokVision: "Photo"
+        case .manual: "Manual"
+        case .usda: "USDA"
+        case .openFoodFacts: "Open Food Facts"
+        case .voice: "Voice"
+        }
+    }
 }
 
 nonisolated struct MacroTargets: Equatable, Sendable {
@@ -245,6 +299,7 @@ final class UserProfile {
     }
     
     init() {
+        self.firstName = "Ryan"
         self.hasFamilialHypocholesterolemia = true
         self.primaryGoals = [.cholesterolControl, .hybridAthlete]
         self.cookingSkillLevel = .low
